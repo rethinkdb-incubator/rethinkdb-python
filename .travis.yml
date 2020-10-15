@@ -1,0 +1,41 @@
+---
+cache: pip
+dist: xenial
+language: python
+sudo: required
+
+python:
+    - '3.7'
+    - '3.8'
+    - '3.9'
+
+allow_failure:
+    - python: '3.9'
+
+install:
+    - pip install poetry pre-commit
+    - poetry install
+
+before_script:
+    - ./scripts/install-db.sh
+    - make protobuf
+    - make download-test-reporter
+    - make test-reporter-before
+
+script:
+    - pre-commit run --all-files
+    - poetry run make lint
+    - poetry run make test
+
+after_success:
+    - make upload-coverage
+
+deploy:
+    provider: script
+    script: poetry publish --build
+    on:
+        python: 3.8
+        tags: true
+
+notifications:
+    email: false

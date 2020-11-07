@@ -49,7 +49,7 @@ class Repl:
 
     # TODO: When Connection class is migrated, set that as the
     # type of connection argument.
-    def set_connection(self, connection):
+    def set_connection(self, connection) -> None:
         """
         Set connection on local thread and activate REPL.
         """
@@ -57,7 +57,7 @@ class Repl:
         self.is_repl_active = True
         setattr(self.thread_data, REPL_CONNECTION_ATTRIBUTE, connection)
 
-    def clear_connection(self):
+    def clear_connection(self) -> None:
         """
         Clear the local thread and deactivate REPL.
         """

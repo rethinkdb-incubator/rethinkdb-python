@@ -84,7 +84,7 @@ lint: ## run linters against the package
 	pylint rethinkdb
 	flake8 rethinkdb --count --ignore=E501,W503 --show-source --statistics
 
-protobuf:
+protobuf: ## download and convert protobuf file
 	curl -sqo ${TARGET_PROTO_FILE} ${PROTO_FILE_URL}
 	python ${FILE_CONVERTER_NAME} -l python -i ${TARGET_PROTO_FILE} -o ${TARGET_CONVERTED_PROTO_FILE}
 

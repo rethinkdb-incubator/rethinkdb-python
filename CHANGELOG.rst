@@ -16,10 +16,23 @@ The format is based on `Keep a Changelog`_, and this project adheres to
 Unreleased_
 -----------
 
+Added
+~~~~~
+
+* `ValueError` raised by `ReqlTimeoutError` and `ReqlAuthError` if only host or port set
+
 Changed
 ~~~~~~~
 
+* QueryPrinter's `print_query` became a property and renamed to `query`
+* QueryPrinter's `print_carrots` became a property and renamed to `carrots`
+* Renamed `ReqlAvailabilityError` to `ReqlOperationError`
 * Extract REPL helper class to a separate file
+
+Removed
+~~~~~~~
+
+* Removed `Rql*` aliases for `Reql*` exceptions
 
 .. EXAMPLE CHANGELOG ENTRY
 

@@ -4,6 +4,14 @@ rethinkdb package
 Submodules
 ----------
 
+rethinkdb.errors module
+-----------------------
+
+.. automodule:: rethinkdb.errors
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rethinkdb.ql2\_pb2 module
 -------------------------
 

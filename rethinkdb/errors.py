@@ -142,7 +142,7 @@ class ReqlError(Exception):
         Return the string representation of the error
         """
 
-        if self.term is None or self.frames is None:
+        if self.__query_printer is None:
             return self.message
 
         message = self.message.rstrip(".")

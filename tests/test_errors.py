@@ -2,7 +2,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from rethinkdb.errors import ReqlError, ReqlAuthError, ReqlCursorEmpty, ReqlTimeoutError
+from rethinkdb.errors import ReqlAuthError, ReqlCursorEmpty, ReqlError, ReqlTimeoutError
 
 
 def test_reql_error():
@@ -69,7 +69,7 @@ def test_reql_error_terms_and_frames_are_set():
 
     # TODO: We cannot really test the composed error message until term is not migrated.
     # This is the reason, why we don't use 'reql error in:\ncomposed\n^' as expectation.
-    assert str(exc.value) == 'reql error in:\ncomposed\n '
+    assert str(exc.value) == "reql error in:\ncomposed\n "
     assert repr(exception) == f"<ReqlError instance: {str(exception)} >"
 
 

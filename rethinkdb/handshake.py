@@ -31,23 +31,11 @@ import hmac
 import json
 from random import SystemRandom
 import struct
-from typing import Dict, Optional, Union
+from typing import Dict, Optional
 
 from rethinkdb import ql2_pb2
 from rethinkdb.errors import InvalidHandshakeStateError, ReqlAuthError, ReqlDriverError
-
-
-def chain_to_bytes(*strings: Union[bytes, str]) -> bytes:
-    """
-    Ensure the bytes and/or strings are chained as bytes.
-    """
-
-    return b"".join(
-        [
-            string.encode("latin-1") if isinstance(string, str) else string
-            for string in strings
-        ]
-    )
+from rethinkdb.utilities import chain_to_bytes
 
 
 class HandshakeState(Enum):

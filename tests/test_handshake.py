@@ -82,16 +82,31 @@ def test_handshake_stage_stepping(base_handshake):
     base_handshake.next_state()
 
     assert base_handshake.state == HandshakeState.INITIAL_RESPONSE
-    base_handshake.next_state()
-
-    assert base_handshake.state == HandshakeState.AUTH_REQUEST
-    base_handshake.next_state()
-
-    assert base_handshake.state == HandshakeState.AUTH_RESPONSE
 
     # No more states, raise an error
     with pytest.raises(InvalidHandshakeStateError):
         base_handshake.next_state()
+
+
+def test_handshake_v1_0_stage_stepping(handshake):
+    """
+    Test that the handshake states can be incremented.
+    """
+
+    assert handshake.state == HandshakeState.INITIAL_CONNECTION
+    handshake.next_state()
+
+    assert handshake.state == HandshakeState.INITIAL_RESPONSE
+    handshake.next_state()
+
+    assert handshake.state == HandshakeState.AUTH_REQUEST
+    handshake.next_state()
+
+    assert handshake.state == HandshakeState.AUTH_RESPONSE
+
+    # No more states, raise an error
+    with pytest.raises(InvalidHandshakeStateError):
+        handshake.next_state()
 
 
 def test_handshake_v1_0_initialization(handshake):

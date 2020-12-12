@@ -15,6 +15,14 @@
 # This file incorporates work covered by the following copyright:
 # Copyright 2010-2016 RethinkDB, all rights reserved.
 
+"""
+RethinkDB client drivers are responsible for serializing queries, sending them to the server
+using the ReQL wire protocol, and receiving responses from the server and returning them to
+the calling application.
+
+This module contains the supported handshakes which can be used to establish a new connection.
+"""
+
 from abc import abstractproperty
 import base64
 from enum import Enum
@@ -55,10 +63,6 @@ class HandshakeState(Enum):
 
 class BaseHandshake:
     """
-    RethinkDB client drivers are responsible for serializing queries, sending them to the server
-    using the ReQL wire protocol, and receiving responses from the server and returning them to
-    the calling application.
-
     :class:`BaseHandshake` is responsible for keeping the common functionality together, what
     handshake versions can reuse later.
     """
@@ -66,8 +70,6 @@ class BaseHandshake:
     STATE_TRANSITIONS: Dict[int, HandshakeState] = {
         0: HandshakeState.INITIAL_CONNECTION,
         1: HandshakeState.INITIAL_RESPONSE,
-        2: HandshakeState.AUTH_REQUEST,
-        3: HandshakeState.AUTH_RESPONSE,
     }
 
     def __init__(self, host: str, port: int):
@@ -94,12 +96,20 @@ class BaseHandshake:
         Return the version of the protocol.
         """
 
-    def next_state(self) -> None:
+    def is_valid_state(self, state: HandshakeState) -> bool:
         """
-        Move to the next handshake state .
+        Validate that the state is registered for the
         """
 
-        next_state_key = self.state.value + 1
+        return state in self.STATE_TRANSITIONS.values()
+
+    def next_state(self) -> None:
+        """
+        Move to the next handshake state.
+        """
+
+        current_key = list(self.STATE_TRANSITIONS.values()).index(self.state)
+        next_state_key = current_key + 1
 
         try:
             self.state = self.STATE_TRANSITIONS[next_state_key]
@@ -121,6 +131,13 @@ class HandshakeV1_0(BaseHandshake):  # pylint: disable=invalid-name
 
     More info: https://rethinkdb.com/docs/writing-drivers/
     """
+
+    STATE_TRANSITIONS: Dict[int, HandshakeState] = {
+        0: HandshakeState.INITIAL_CONNECTION,
+        1: HandshakeState.INITIAL_RESPONSE,
+        2: HandshakeState.AUTH_REQUEST,
+        3: HandshakeState.AUTH_RESPONSE,
+    }
 
     def __init__(self, host: str, port: int, username: bytes, password: bytes):
         super().__init__(host, port)
@@ -330,29 +347,33 @@ class HandshakeV1_0(BaseHandshake):  # pylint: disable=invalid-name
         self._server_signature = None
         self.state = HandshakeState.INITIAL_CONNECTION
 
-    def next_message(self, raw_response: Optional[bytes]):
+    def next_message(self, raw_response: Optional[bytes]) -> Optional[bytes]:
         """
         Handle the next message to send or receive.
         """
 
         response: str = ""
+        message: Optional[bytes] = None
 
         if raw_response is not None:
             response = raw_response.decode("utf-8")
+
+        if not self.is_valid_state(self.state):
+            raise InvalidHandshakeStateError("Unexpected handshake state")
 
         if self.state == HandshakeState.INITIAL_CONNECTION:
             if raw_response is not None:
                 raise ReqlDriverError("Unexpected response")
 
-            return self.__initialize_connection()
+            message = self.__initialize_connection()
 
         if self.state == HandshakeState.INITIAL_RESPONSE:
-            return self.__read_response(response)
+            self.__read_response(response)
 
         if self.state == HandshakeState.AUTH_REQUEST:
-            return self.__prepare_auth_request(response)
+            message = self.__prepare_auth_request(response)
 
         if self.state == HandshakeState.AUTH_RESPONSE:
-            return self.__read_auth_response(response)
+            self.__read_auth_response(response)
 
-        raise InvalidHandshakeStateError("Unexpected handshake state")
+        return message

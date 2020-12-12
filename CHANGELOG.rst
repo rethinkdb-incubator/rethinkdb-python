@@ -20,6 +20,7 @@ Added
 ~~~~~
 
 * `ValueError` raised by `ReqlTimeoutError` and `ReqlAuthError` if only host or port set
+* New error type for invalid handshake state: `InvalidHandshakeStateError`
 
 Changed
 ~~~~~~~
@@ -28,6 +29,10 @@ Changed
 * QueryPrinter's `print_carrots` became a property and renamed to `carrots`
 * Renamed `ReqlAvailabilityError` to `ReqlOperationError`
 * Extract REPL helper class to a separate file
+* `HandshakeV1_0` is waiting `bytes` for `username` and `password` attributes instead of `str`
+* `HandshakeV1_0` defines `username` and `password` attributes as protected attributes
+* `HandshakeV1_0` has a hardcoded `JSONEncoder` and `JSONDecoder` from now on
+* `HandshakeV1_0` raises `InvalidHandshakeStateError` when an unrecognized state called in `next_message`
 
 Removed
 ~~~~~~~

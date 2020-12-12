@@ -12,6 +12,14 @@ rethinkdb.errors module
    :undoc-members:
    :show-inheritance:
 
+rethinkdb.handshake module
+--------------------------
+
+.. automodule:: rethinkdb.handshake
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rethinkdb.ql2\_pb2 module
 -------------------------
 

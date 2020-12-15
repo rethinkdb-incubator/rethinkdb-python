@@ -48,7 +48,7 @@ except NameError:
     xrange = range
 
 
-def dict_items(dictionary: dict):
+def dict_items(dictionary: dict) -> list:
     return list(dictionary.items())
 
 
@@ -78,14 +78,15 @@ class Repl(object):
 # This is both an external function and one used extensively
 # internally to convert coerce python values to RQL types
 # TODO
-# RqlBinary cannot be found.
+# 1) RqlBinary cannot be found nor RqlQuery.
+# 2) Return value seems quite complex to determine. How do we handle such case?
 def expr(
     val: Union[
         str,
         bytes,
         unicode,
-        RqlQuery,
-        RqlBinary,
+        # RqlQuery,
+        # RqlBinary,
         datetime.date,
         datetime.datetime,
         collections.Mapping,
@@ -105,9 +106,10 @@ def expr(
     if nesting_depth <= 0:
         raise ReqlDriverCompileError("Nesting depth limit exceeded.")
 
-    if isinstance(val, RqlQuery):
-        return val
-    elif isinstance(val, collections.Callable):
+    #if isinstance(val, RqlQuery):
+    #    return val
+    # elif isinstance(val, collections.Callable):
+    if isinstance(val, collections.Callable):
         return Func(val)
     elif isinstance(val, (datetime.datetime, datetime.date)):
         if not hasattr(val, "tzinfo") or not val.tzinfo:
@@ -122,8 +124,8 @@ def expr(
                 % (type(val).__name__)
             )
         return ISO8601(val.isoformat())
-    elif isinstance(val, RqlBinary):
-        return Binary(val)
+    # elif isinstance(val, RqlBinary):
+    #    return Binary(val)
     elif isinstance(val, (str, unicode)):
         return Datum(val)
     elif isinstance(val, bytes):
@@ -266,7 +268,6 @@ class RqlQuery(object):
         return query
 
     # Non-operator versions of the above
-
     def eq(self, *args):
         return Eq(self, *args)
 
@@ -594,7 +595,6 @@ class RqlQuery(object):
         return Sample(self, *args)
 
     # Time support
-
     def to_iso8601(self, *args):
         return ToISO8601(self, *args)
 
@@ -2003,7 +2003,7 @@ class PolygonSub(RqlMethodQuery):
 
 
 # Returns True if IMPLICIT_VAR is found in the subquery
-def _ivar_scan(query):
+def _ivar_scan(query) -> bool:
     if not isinstance(query, RqlQuery):
         return False
     if isinstance(query, ImplicitVar):

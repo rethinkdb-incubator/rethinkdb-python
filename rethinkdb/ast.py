@@ -145,6 +145,9 @@ def expr(
 
 
 class RqlQuery(object):
+    """
+    A RethinkDB query object
+    """
     # Instantiate this AST node with the given pos and opt args
     def __init__(self, *args, **optargs):
         self._args = [expr(e) for e in args]
@@ -154,6 +157,7 @@ class RqlQuery(object):
             self.optargs[key] = expr(value)
 
     # Send this query to the server to be executed
+    # c is the connection object
     def run(self, c=None, **global_optargs):
         if c is None:
             c = Repl.get()
@@ -697,6 +701,9 @@ class RqlBoolOperQuery(RqlQuery):
 
 
 class RqlBiOperQuery(RqlQuery):
+    """
+    RethinkDB binary query operation
+    """
     def compose(self, args, optargs):
         t_args = [
             T(
@@ -710,6 +717,9 @@ class RqlBiOperQuery(RqlQuery):
 
 
 class RqlBiCompareOperQuery(RqlBiOperQuery):
+    """
+    RethinkDB comparison operator query
+    """
     def __init__(self, *args, **optargs):
         RqlBiOperQuery.__init__(self, *args, **optargs)
 
@@ -776,7 +786,13 @@ class RqlBracketQuery(RqlMethodQuery):
             return RqlMethodQuery.compose(self, args, optargs)
 
 
+# TODO
+# Maybe move this class somewhere else? It may not be only used
+# by queries
 class RqlTzinfo(datetime.tzinfo):
+    """
+    RethinkDB timezone information
+    """
     def __init__(self, offsetstr):
         hours, minutes = map(int, offsetstr.split(":"))
 
@@ -937,6 +953,9 @@ class ReQLDecoder(json.JSONDecoder):
 # R_ARRAYs and R_OBJECTs would require verifying that at all nested levels
 # our arrays and objects are composed only of basic types.
 class Datum(RqlQuery):
+    """
+    RethinkDB datum query
+    """
     def __init__(self, val):
         super(Datum, self).__init__()
         self.data = val
@@ -949,6 +968,9 @@ class Datum(RqlQuery):
 
 
 class MakeArray(RqlQuery):
+    """
+    RethinkDB array composer query
+    """
     term_type = P_TERM.MAKE_ARRAY
 
     def compose(self, args, optargs):
@@ -2016,7 +2038,14 @@ def _ivar_scan(query) -> bool:
 
 
 # Called on arguments that should be functions
-def func_wrap(val):
+# TODO
+# expr may return different value types. Maybe use a base one?
+def func_wrap(val: Union[
+    RqlQuery,
+    ImplicitVar,
+    list,
+    dict
+    ]):
     val = expr(val)
     if _ivar_scan(val):
         return Func(lambda x: val)

@@ -27,6 +27,8 @@ import threading
 
 from typing import Union
 
+# Not found. Breaks everything
+# What's this module for?
 from rethinkdb import ql2_pb2
 from rethinkdb.errors import (
     QueryPrinter,
@@ -36,11 +38,6 @@ from rethinkdb.errors import (
 )
 
 P_TERM = ql2_pb2.Term.TermType
-
-try:
-    unicode
-except NameError:
-    unicode = str
 
 
 def dict_items(dictionary: dict) -> list:
@@ -55,8 +52,8 @@ class Repl(object):
     def get(cls):
         if "repl" in cls.thread_data.__dict__:
             return cls.thread_data.repl
-        else:
-            return None
+        
+        return None
 
     @classmethod
     def set(cls, conn):
@@ -79,7 +76,6 @@ def expr(
     val: Union[
         str,
         bytes,
-        unicode,
         # RqlQuery,
         # RqlBinary,
         datetime.date,
@@ -91,7 +87,7 @@ def expr(
     nesting_depth: int = 20
 ):
     """
-        Convert a Python primitive into a RQL primitive value
+    Convert a Python primitive into a RQL primitive value
     """
     if not isinstance(nesting_depth, int):
         raise ReqlDriverCompileError(
@@ -121,7 +117,7 @@ def expr(
         return ISO8601(val.isoformat())
     # elif isinstance(val, RqlBinary):
     #    return Binary(val)
-    elif isinstance(val, (str, unicode)):
+    elif isinstance(val, str):
         return Datum(val)
     elif isinstance(val, bytes):
         return Binary(val)
@@ -861,11 +857,8 @@ class ReQLDecoder(json.JSONDecoder):
     def convert_time(self, obj):
         if "epoch_time" not in obj:
             raise ReqlDriverError(
-                (
-                    "pseudo-type TIME object %s does not "
-                    + 'have expected field "epoch_time".'
-                )
-                % json.dumps(obj)
+                f"pseudo-type TIME object {json.dumps(obj)} does not "
+                + 'have expected field "epoch_time".'
             )
 
         if "timezone" in obj:
@@ -879,11 +872,8 @@ class ReQLDecoder(json.JSONDecoder):
     def convert_grouped_data(obj):
         if "data" not in obj:
             raise ReqlDriverError(
-                (
-                    "pseudo-type GROUPED_DATA object"
-                    + ' %s does not have the expected field "data".'
-                )
-                % json.dumps(obj)
+            "pseudo-type GROUPED_DATA object"
+            + f' {json.dumps(obj)} does not have the expected field "data".'
             )
         return dict([
             (recursively_make_hashable(k), v) for k, v in obj["data"]]
@@ -893,11 +883,8 @@ class ReQLDecoder(json.JSONDecoder):
     def convert_binary(obj):
         if "data" not in obj:
             raise ReqlDriverError(
-                (
-                    "pseudo-type BINARY object %s does not have "
-                    + 'the expected field "data".'
-                )
-                % json.dumps(obj)
+                f"pseudo-type BINARY object {json.dumps(obj)} does not have "
+                + 'the expected field "data".'
             )
         return RqlBinary(base64.b64decode(obj["data"].encode("utf-8")))
 
@@ -930,8 +917,7 @@ class ReQLDecoder(json.JSONDecoder):
                     return self.convert_binary(obj)
                 elif binary_format != "raw":
                     raise ReqlDriverError(
-                        'Unknown binary_format run option "%s".' %
-                        binary_format
+                        f'Unknown binary_format run option "{binary_format}".'
                     )
             else:
                 raise ReqlDriverError("Unknown pseudo-type %s" % reql_type)
@@ -982,7 +968,7 @@ class MakeObj(RqlQuery):
     def __init__(self, obj_dict):
         super(MakeObj, self).__init__()
         for key, value in dict_items(obj_dict):
-            if not isinstance(key, (str, unicode)):
+            if not isinstance(key, str):
                 raise ReqlDriverCompileError("Object keys must be strings.")
             self.optargs[key] = expr(value)
 
@@ -1202,8 +1188,8 @@ class Slice(RqlBracketQuery):
             if needs_wrap(self._args[0]):
                 args[0] = T("r.expr(", args[0], ")")
             return T(args[0], "[", args[1], ":", args[2], "]")
-        else:
-            return RqlBracketQuery.compose(self, args, optargs)
+
+        return RqlBracketQuery.compose(self, args, optargs)
 
 
 class Skip(RqlMethodQuery):
@@ -1827,7 +1813,7 @@ class Binary(RqlTopLevelQuery):
         # Python 3 - `unicode` is equivalent to `str`, neither will be accepted
         if isinstance(data, RqlQuery):
             RqlTopLevelQuery.__init__(self, data)
-        elif isinstance(data, unicode):
+        elif isinstance(data, str):
             raise ReqlDriverCompileError(
                 "Cannot convert a unicode string to binary, "
                 "use `unicode.encode()` to specify the "

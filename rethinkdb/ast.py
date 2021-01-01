@@ -24,18 +24,12 @@ import collections
 import datetime
 import json
 import threading
-
 from typing import Union
 
 # Not found. Breaks everything
 # What's this module for?
 from rethinkdb import ql2_pb2
-from rethinkdb.errors import (
-    QueryPrinter,
-    ReqlDriverCompileError,
-    ReqlDriverError,
-    T
-)
+from rethinkdb.errors import QueryPrinter, ReqlDriverCompileError, ReqlDriverError, T
 
 P_TERM = ql2_pb2.Term.TermType
 
@@ -52,7 +46,7 @@ class Repl(object):
     def get(cls):
         if "repl" in cls.thread_data.__dict__:
             return cls.thread_data.repl
-        
+
         return None
 
     @classmethod
@@ -82,22 +76,20 @@ def expr(
         datetime.datetime,
         collections.Mapping,
         collections.Iterable,
-        collections.Callable
+        collections.Callable,
     ],
-    nesting_depth: int = 20
+    nesting_depth: int = 20,
 ):
     """
     Convert a Python primitive into a RQL primitive value
     """
     if not isinstance(nesting_depth, int):
-        raise ReqlDriverCompileError(
-            "Second argument to `r.expr` must be a number."
-        )
+        raise ReqlDriverCompileError("Second argument to `r.expr` must be a number.")
 
     if nesting_depth <= 0:
         raise ReqlDriverCompileError("Nesting depth limit exceeded.")
 
-    #if isinstance(val, RqlQuery):
+    # if isinstance(val, RqlQuery):
     #    return val
     # elif isinstance(val, collections.Callable):
     if isinstance(val, collections.Callable):
@@ -139,6 +131,7 @@ class RqlQuery(object):
     """
     A RethinkDB query object
     """
+
     # Instantiate this AST node with the given pos and opt args
     def __init__(self, *args, **optargs):
         self._args = [expr(e) for e in args]
@@ -416,12 +409,7 @@ class RqlQuery(object):
     def __getitem__(self, index):
         if isinstance(index, slice):
             if index.stop:
-                return Slice(
-                    self,
-                    index.start or 0,
-                    index.stop,
-                    bracket_operator=True
-                )
+                return Slice(self, index.start or 0, index.stop, bracket_operator=True)
             else:
                 return Slice(
                     self,
@@ -510,11 +498,7 @@ class RqlQuery(object):
             kwfuncargs = {}
             for arg_name in kwargs:
                 kwfuncargs[arg_name] = func_wrap(kwargs[arg_name])
-            return Fold(
-                self,
-                *(args[:-1] + (func_wrap(args[-1]),)),
-                **kwfuncargs
-            )
+            return Fold(self, *(args[:-1] + (func_wrap(args[-1]),)), **kwfuncargs)
         else:
             return Fold(self)
 
@@ -525,11 +509,7 @@ class RqlQuery(object):
         return ConcatMap(self, *[func_wrap(arg) for arg in args])
 
     def order_by(self, *args, **kwargs):
-        args = [
-            arg if isinstance(arg, (Asc, Desc))
-            else func_wrap(arg)
-            for arg in args
-        ]
+        args = [arg if isinstance(arg, (Asc, Desc)) else func_wrap(arg) for arg in args]
         return OrderBy(self, *args, **kwargs)
 
     def between(self, *args, **kwargs):
@@ -673,20 +653,12 @@ class RqlBoolOperQuery(RqlQuery):
 
     def compose(self, args, optargs):
         t_args = [
-            T(
-                "r.expr(",
-                args[i],
-                ")"
-            ) if needs_wrap(self._args[i]) else args[i]
+            T("r.expr(", args[i], ")") if needs_wrap(self._args[i]) else args[i]
             for i in range(len(args))
         ]
 
         if self.infix:
-            return T(
-                "(",
-                T(*t_args, intsp=[" ", self.statement_infix, " "]),
-                ")"
-            )
+            return T("(", T(*t_args, intsp=[" ", self.statement_infix, " "]), ")")
         else:
             return T("r.", self.statement, "(", T(*t_args, intsp=", "), ")")
 
@@ -695,13 +667,10 @@ class RqlBiOperQuery(RqlQuery):
     """
     RethinkDB binary query operation
     """
+
     def compose(self, args, optargs):
         t_args = [
-            T(
-                "r.expr(",
-                args[i],
-                ")"
-            ) if needs_wrap(self._args[i]) else args[i]
+            T("r.expr(", args[i], ")") if needs_wrap(self._args[i]) else args[i]
             for i in range(len(args))
         ]
         return T("(", T(*t_args, intsp=[" ", self.statement, " "]), ")")
@@ -711,6 +680,7 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
     """
     RethinkDB comparison operator query
     """
+
     def __init__(self, *args, **optargs):
         RqlBiOperQuery.__init__(self, *args, **optargs)
 
@@ -726,10 +696,7 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
                         "`.and_` instead."
                     )
                     raise ReqlDriverCompileError(
-                        err % (
-                            self.statement,
-                            QueryPrinter(self).print_query()
-                        )
+                        err % (self.statement, QueryPrinter(self).print_query())
                     )
             except AttributeError:
                 # No infix attribute,
@@ -784,6 +751,7 @@ class RqlTzinfo(datetime.tzinfo):
     """
     RethinkDB timezone information
     """
+
     def __init__(self, offsetstr):
         hours, minutes = map(int, offsetstr.split(":"))
 
@@ -827,7 +795,7 @@ def recursively_make_hashable(obj):
 
 class ReQLEncoder(json.JSONEncoder):
     """
-        Default JSONEncoder subclass to handle query conversion.
+    Default JSONEncoder subclass to handle query conversion.
     """
 
     def __init__(self):
@@ -847,7 +815,7 @@ class ReQLEncoder(json.JSONEncoder):
 
 class ReQLDecoder(json.JSONDecoder):
     """
-        Default JSONDecoder subclass to handle pseudo-type conversion.
+    Default JSONDecoder subclass to handle pseudo-type conversion.
     """
 
     def __init__(self, reql_format_opts=None):
@@ -872,12 +840,10 @@ class ReQLDecoder(json.JSONDecoder):
     def convert_grouped_data(obj):
         if "data" not in obj:
             raise ReqlDriverError(
-            "pseudo-type GROUPED_DATA object"
-            + f' {json.dumps(obj)} does not have the expected field "data".'
+                "pseudo-type GROUPED_DATA object"
+                + f' {json.dumps(obj)} does not have the expected field "data".'
             )
-        return dict([
-            (recursively_make_hashable(k), v) for k, v in obj["data"]]
-        )
+        return dict([(recursively_make_hashable(k), v) for k, v in obj["data"]])
 
     @staticmethod
     def convert_binary(obj):
@@ -937,6 +903,7 @@ class Datum(RqlQuery):
     """
     RethinkDB datum query
     """
+
     def __init__(self, val):
         super(Datum, self).__init__()
         self.data = val
@@ -952,6 +919,7 @@ class MakeArray(RqlQuery):
     """
     RethinkDB array composer query
     """
+
     term_type = P_TERM.MAKE_ARRAY
 
     def compose(self, args, optargs):
@@ -979,9 +947,8 @@ class MakeObj(RqlQuery):
         return T(
             "r.expr({",
             T(
-                *[T(repr(key), ": ", value)
-                    for key, value in dict_items(optargs)],
-                intsp=", "
+                *[T(repr(key), ": ", value) for key, value in dict_items(optargs)],
+                intsp=", ",
             ),
             "})",
         )
@@ -1304,19 +1271,13 @@ class FunCall(RqlQuery):
     # before passing it down to the base class constructor.
     def __init__(self, *args):
         if len(args) == 0:
-            raise ReqlDriverCompileError(
-                "Expected 1 or more arguments but found 0."
-            )
+            raise ReqlDriverCompileError("Expected 1 or more arguments but found 0.")
         args = [func_wrap(args[-1])] + list(args[:-1])
         RqlQuery.__init__(self, *args)
 
     def compose(self, args, optargs):
         if len(args) != 2:
-            return T(
-                "r.do(",
-                T(T(*(args[1:]), intsp=", "), args[0], intsp=", "),
-                ")"
-            )
+            return T("r.do(", T(T(*(args[1:]), intsp=", "), args[0], intsp=", "), ")")
 
         if isinstance(self._args[1], Datum):
             args[1] = T("r.expr(", args[1], ")")
@@ -1786,9 +1747,7 @@ class RqlBinary(bytes):
 
     def __repr__(self):
         excerpt = binascii.hexlify(self[0:6]).decode("utf-8")
-        excerpt = " ".join(
-            [excerpt[i: i + 2] for i in range(0, len(excerpt), 2)]
-        )
+        excerpt = " ".join([excerpt[i : i + 2] for i in range(0, len(excerpt), 2)])
         excerpt = (
             ", '%s%s'" % (excerpt, "..." if len(self) > 6 else "")
             if len(self) > 0
@@ -1842,10 +1801,7 @@ class Binary(RqlTopLevelQuery):
 
     def build(self):
         if len(self._args) == 0:
-            return {
-                "$reql_type$": "BINARY",
-                "data": self.base64_data.decode("utf-8")
-            }
+            return {"$reql_type$": "BINARY", "data": self.base64_data.decode("utf-8")}
         else:
             return RqlTopLevelQuery.build(self)
 
@@ -2021,12 +1977,7 @@ def _ivar_scan(query) -> bool:
 # Called on arguments that should be functions
 # TODO
 # expr may return different value types. Maybe use a base one?
-def func_wrap(val: Union[
-    RqlQuery,
-    ImplicitVar,
-    list,
-    dict
-    ]):
+def func_wrap(val: Union[RqlQuery, ImplicitVar, list, dict]):
     val = expr(val)
     if _ivar_scan(val):
         return Func(lambda x: val)
@@ -2061,11 +2012,8 @@ class Func(RqlQuery):
         return T(
             "lambda ",
             T(
-                *[v.compose(
-                    [v._args[0].compose(None, None)],
-                    []
-                ) for v in self.vrs],
-                intsp=", "
+                *[v.compose([v._args[0].compose(None, None)], []) for v in self.vrs],
+                intsp=", ",
             ),
             ": ",
             args[1],

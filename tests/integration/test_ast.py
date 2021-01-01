@@ -2,7 +2,7 @@ import threading
 
 import pytest
 
-from rethinkdb.ast import dict_items, needs_wrap, Repl
+from rethinkdb.ast import Repl, dict_items, needs_wrap
 
 
 @pytest.fixture

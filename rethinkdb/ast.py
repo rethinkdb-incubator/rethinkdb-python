@@ -15,8 +15,11 @@
 # This file incorporates work covered by the following copyright:
 # Copyright 2010-2016 RethinkDB, all rights reserved.
 
-__all__ = ["expr", "RqlQuery", "ReQLEncoder", "ReQLDecoder", "Repl"]
+"""
+TODO: What AST module is
+"""
 
+__all__ = ["expr", "RqlQuery", "ReQLEncoder", "ReQLDecoder"]
 
 import base64
 import binascii
@@ -26,40 +29,11 @@ import json
 import threading
 from typing import Union
 
-# Not found. Breaks everything
-# What's this module for?
 from rethinkdb import ql2_pb2
+from rethinkdb.repl import Repl
 from rethinkdb.errors import QueryPrinter, ReqlDriverCompileError, ReqlDriverError, T
 
 P_TERM = ql2_pb2.Term.TermType
-
-
-def dict_items(dictionary: dict) -> list:
-    return list(dictionary.items())
-
-
-class Repl(object):
-    thread_data = threading.local()
-    repl_active = False
-
-    @classmethod
-    def get(cls):
-        if "repl" in cls.thread_data.__dict__:
-            return cls.thread_data.repl
-
-        return None
-
-    @classmethod
-    def set(cls, conn):
-        cls.thread_data.repl = conn
-        cls.repl_active = True
-
-    @classmethod
-    def clear(cls):
-        if "repl" in cls.thread_data.__dict__:
-            del cls.thread_data.repl
-        cls.repl_active = False
-
 
 # This is both an external function and one used extensively
 # internally to convert coerce python values to RQL types
@@ -117,7 +91,7 @@ def expr(
         # MakeObj doesn't take the dict as a keyword args to avoid
         # conflicting with the `self` parameter.
         obj = {}
-        for k, v in dict_items(val):
+        for k, v in val.items():
             obj[k] = expr(v, nesting_depth - 1)
         return MakeObj(obj)
     elif isinstance(val, collections.Iterable):
@@ -137,16 +111,18 @@ class RqlQuery(object):
         self._args = [expr(e) for e in args]
 
         self.optargs = {}
-        for key, value in dict_items(optargs):
+        for key, value in optargs.items():
             self.optargs[key] = expr(value)
 
     # Send this query to the server to be executed
     # c is the connection object
     def run(self, c=None, **global_optargs):
+        repl = Repl()
+
         if c is None:
-            c = Repl.get()
+            c = repl.get_connection()
             if c is None:
-                if Repl.repl_active:
+                if repl.is_repl_active:
                     raise ReqlDriverError(
                         "RqlQuery.run must be given a connection to run on. "
                         "A default connection has been set with "
@@ -706,7 +682,7 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
 
 class RqlTopLevelQuery(RqlQuery):
     def compose(self, args, optargs):
-        args.extend([T(key, "=", value) for key, value in dict_items(optargs)])
+        args.extend([T(key, "=", value) for key, value in optargs.items()])
         return T("r.", self.statement, "(", T(*(args), intsp=", "), ")")
 
 
@@ -719,7 +695,7 @@ class RqlMethodQuery(RqlQuery):
             args[0] = T("r.expr(", args[0], ")")
 
         restargs = args[1:]
-        restargs.extend([T(k, "=", v) for k, v in dict_items(optargs)])
+        restargs.extend([T(k, "=", v) for k, v in optargs.items()])
         restargs = T(*restargs, intsp=", ")
 
         return T(args[0], ".", self.statement, "(", restargs, ")")
@@ -787,9 +763,7 @@ def recursively_make_hashable(obj):
     if isinstance(obj, list):
         return tuple([recursively_make_hashable(i) for i in obj])
     elif isinstance(obj, dict):
-        return frozenset(
-            [(k, recursively_make_hashable(v)) for k, v in dict_items(obj)]
-        )
+        return frozenset([(k, recursively_make_hashable(v)) for k, v in obj.items()])
     return obj
 
 
@@ -935,7 +909,7 @@ class MakeObj(RqlQuery):
     # TODO: @gabor-boros Figure out is the above still an issue or not.
     def __init__(self, obj_dict):
         super(MakeObj, self).__init__()
-        for key, value in dict_items(obj_dict):
+        for key, value in obj_dict.items():
             if not isinstance(key, str):
                 raise ReqlDriverCompileError("Object keys must be strings.")
             self.optargs[key] = expr(value)
@@ -947,7 +921,7 @@ class MakeObj(RqlQuery):
         return T(
             "r.expr({",
             T(
-                *[T(repr(key), ": ", value) for key, value in dict_items(optargs)],
+                *[T(repr(key), ": ", value) for key, value in optargs.items()],
                 intsp=", ",
             ),
             "})",
@@ -1355,7 +1329,7 @@ class Table(RqlQuery):
         return UUID(self, *args, **kwargs)
 
     def compose(self, args, optargs):
-        args.extend([T(k, "=", v) for k, v in dict_items(optargs)])
+        args.extend([T(k, "=", v) for k, v in optargs.items()])
         if isinstance(self._args[0], DB):
             return T(args[0], ".table(", T(*(args[1:]), intsp=", "), ")")
         else:
@@ -1969,7 +1943,7 @@ def _ivar_scan(query) -> bool:
         return True
     if any([_ivar_scan(arg) for arg in query._args]):
         return True
-    if any([_ivar_scan(arg) for k, arg in dict_items(query.optargs)]):
+    if any([_ivar_scan(arg) for k, arg in query.optargs.items()]):
         return True
     return False
 

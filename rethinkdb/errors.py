@@ -291,3 +291,9 @@ class ReqlUserError(ReqlRuntimeError):
     """
     Exception indicates that en error caused by `r.error` with arguments.
     """
+
+
+class InvalidHandshakeStateError(ReqlDriverError):
+    """
+    Exception raised when the client entered a not existing state during connection handshake.
+    """

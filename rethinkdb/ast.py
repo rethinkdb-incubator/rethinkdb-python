@@ -29,7 +29,8 @@ import collections
 import datetime
 import json
 import threading
-from typing import Callable, List, Union as TUnion
+from typing import Callable, List
+from typing import Union as TUnion
 
 from rethinkdb import ql2_pb2
 from rethinkdb.errors import QueryPrinter, ReqlDriverCompileError, ReqlDriverError
@@ -357,19 +358,19 @@ class RqlQuery(object):
     # but of some type accepted by Bracket,
     # which I can't understand where it's defined
     def __getitem__(self, index):
-        if isinstance(index, slice):
-            if index.stop:
-                return Slice(self, index.start or 0, index.stop, bracket_operator=True)
-            else:
-                return Slice(
-                    self,
-                    index.start or 0,
-                    -1,
-                    right_bound="closed",
-                    bracket_operator=True,
-                )
-        else:
+        if not isinstance(index, slice):
             return Bracket(self, index, bracket_operator=True)
+
+        if index.stop:
+            return Slice(self, index.start or 0, index.stop, bracket_operator=True)
+
+        return Slice(
+            self,
+            index.start or 0,
+            -1,
+            right_bound="closed",
+            bracket_operator=True,
+        )
 
     def __iter__(*args, **kwargs):
         raise ReqlDriverError(

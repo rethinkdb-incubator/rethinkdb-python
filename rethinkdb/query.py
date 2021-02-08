@@ -529,6 +529,11 @@ def uuid(*args):
     return ast.UUID(*args)
 
 
+##############
+# Geospatial #
+##############
+
+
 # Global geospatial operations
 def geojson(*args):
     return ast.GeoJson(*args)

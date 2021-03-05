@@ -16,13 +16,14 @@
 # Copyright 2010-2016 RethinkDB, all rights reserved.
 
 """
-TODO: What encoder module is
+Encoder module contains classes and helper functions to encode queries and
+decode pseudo-type objects to Python native objects.
 """
 
 import base64
 from datetime import datetime
 import json
-from typing import Callable
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
 from rethinkdb.ast import RqlBinary, RqlQuery, RqlTzinfo
 from rethinkdb.errors import ReqlDriverError
@@ -38,14 +39,14 @@ class ReQLEncoder(json.JSONEncoder):
     def __init__(
         self,
         *,
-        skipkeys=False,
-        ensure_ascii=False,
-        check_circular=False,
-        allow_nan=False,
-        sort_keys=False,
-        indent=None,
-        separators=(",", ":"),
-        default=None,
+        skipkeys: bool = False,
+        ensure_ascii: bool = False,
+        check_circular: bool = False,
+        allow_nan: bool = False,
+        sort_keys: bool = False,
+        indent: Optional[int] = None,
+        separators: Optional[Tuple[str, str]] = (",", ":"),
+        default: Optional[Callable[[Any], Any]] = None,
     ):
         super().__init__(
             skipkeys=skipkeys,
@@ -58,10 +59,17 @@ class ReQLEncoder(json.JSONEncoder):
             default=default,
         )
 
-    def default(self, o):
+    def default(self, o: Any) -> Any:
+        """
+        Return a serializable object for ``o``.
+
+        :raises: TypeError
+        """
+
         if isinstance(o, RqlQuery):
             return o.build()
-        return super().default(self, o)
+
+        return super().default(o)
 
 
 class ReQLDecoder(json.JSONDecoder):
@@ -71,13 +79,13 @@ class ReQLDecoder(json.JSONDecoder):
 
     def __init__(
         self,
-        object_hook=None,
-        parse_float=None,
-        parse_int=None,
-        parse_constant=None,
-        strict=True,
-        object_pairs_hook=None,
-        reql_format_opts=None,
+        object_hook: Optional[Callable[[Dict[str, Any]], Any]] = None,
+        parse_float: Optional[Callable[[str], Any]] = None,
+        parse_int: Optional[Callable[[str], Any]] = None,
+        parse_constant: Optional[Callable[[str], Any]] = None,
+        strict: bool = True,
+        object_pairs_hook: Optional[Callable[[List[Tuple[str, Any]]], Any]] = None,
+        reql_format_opts: Optional[Dict[str, Any]] = None,
     ):
         custom_object_hook = object_hook or self.convert_pseudo_type
 
@@ -93,7 +101,13 @@ class ReQLDecoder(json.JSONDecoder):
         self.reql_format_opts = reql_format_opts or {}
 
     @staticmethod
-    def convert_time(obj):
+    def convert_time(obj: Dict[str, Any]) -> datetime:
+        """
+        Convert pseudo-type TIME object to Python datetime object.
+
+        :raises: ReqlDriverError
+        """
+
         if "epoch_time" not in obj:
             raise ReqlDriverError(
                 f"pseudo-type TIME object {json.dumps(obj)} does not "
@@ -106,17 +120,29 @@ class ReQLDecoder(json.JSONDecoder):
         return datetime.utcfromtimestamp(obj["epoch_time"])
 
     @staticmethod
-    def convert_grouped_data(obj):
+    def convert_grouped_data(obj: Dict[str, Any]) -> dict:
+        """
+        Convert pseudo-type GROUPED_DATA object to Python dictionary.
+
+        :raises: ReqlDriverError
+        """
+
         if "data" not in obj:
             raise ReqlDriverError(
                 f"pseudo-type GROUPED_DATA object {json.dumps(obj)} does not"
                 'have the expected field "data".'
             )
 
-        return dict([(recursively_make_hashable(k), v) for k, v in obj["data"]])
+        return {make_hashable(k): v for k, v in obj["data"]}
 
     @staticmethod
-    def convert_binary(obj):
+    def convert_binary(obj: Dict[str, Any]) -> bytes:
+        """
+        Convert pseudo-type BINARY object to Python bytes object.
+
+        :raises: ReqlDriverError
+        """
+
         if "data" not in obj:
             raise ReqlDriverError(
                 f"pseudo-type BINARY object {json.dumps(obj)} does not have "
@@ -125,34 +151,47 @@ class ReQLDecoder(json.JSONDecoder):
 
         return RqlBinary(base64.b64decode(obj["data"].encode("utf-8")))
 
-    def _convert_pseudo_type(self, obj: dict, format_name: str, converter: Callable):
+    def __convert_pseudo_type(
+        self, obj: Dict[str, Any], format_name: str, converter: Callable
+    ) -> Any:
         """
-        Convert pseudo types.
+        Convert pseudo-type objects using the given converter.
+
+        :raises: ReqlDriverError
         """
 
         pseudo_type_format = self.reql_format_opts.get(format_name)
 
         if pseudo_type_format is None or pseudo_type_format == "native":
             return converter(obj)
-        elif pseudo_type_format != "raw":
+
+        if pseudo_type_format != "raw":
             raise ReqlDriverError(
                 f'Unknown {format_name} run option "{pseudo_type_format}".'
             )
 
-    def convert_pseudo_type(self, obj: dict):
+        return None
+
+    def convert_pseudo_type(self, obj: Dict[str, Any]) -> Any:
+        """
+        Convert pseudo-type objects using the given converter.
+
+        :raises: ReqlDriverError
+        """
+
         reql_type = obj.get("$reql_type$")
 
+        # If there was no pseudo_type, or the relevant format is raw, return
+        # the original object
         if reql_type is None:
-            # If there was no pseudo_type, or the relevant format is raw, return
-            # the original object
             return obj
 
         if reql_type == "TIME":
-            self._convert_pseudo_type(obj, "time_format", self.convert_time)
+            self.__convert_pseudo_type(obj, "time_format", self.convert_time)
         elif reql_type == "GROUPED_DATA":
-            self._convert_pseudo_type(obj, "group_format", self.convert_grouped_data)
+            self.__convert_pseudo_type(obj, "group_format", self.convert_grouped_data)
         elif reql_type == "BINARY":
-            self._convert_pseudo_type(obj, "binary_format", self.convert_binary)
+            self.__convert_pseudo_type(obj, "binary_format", self.convert_binary)
         elif reql_type == "GEOMETRY":
             # No special support for this, just return the raw object
             return obj
@@ -160,7 +199,7 @@ class ReQLDecoder(json.JSONDecoder):
         raise ReqlDriverError(f'Unknown pseudo-type "{reql_type}"')
 
 
-def recursively_make_hashable(obj):
+def make_hashable(obj: Dict[str, Any]) -> Union[tuple, frozenset, dict]:
     """
     Python only allows immutable built-in types to be hashed, such as for keys in
     a dict. This means we can't use lists or dicts as keys in grouped data objects,
@@ -170,9 +209,9 @@ def recursively_make_hashable(obj):
     """
 
     if isinstance(obj, list):
-        return tuple([recursively_make_hashable(i) for i in obj])
+        return tuple([make_hashable(i) for i in obj])
 
     if isinstance(obj, dict):
-        return frozenset([(k, recursively_make_hashable(v)) for k, v in obj.items()])
+        return frozenset([(k, make_hashable(v)) for k, v in obj.items()])
 
     return obj

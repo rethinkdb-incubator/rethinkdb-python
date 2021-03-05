@@ -27,7 +27,7 @@ from typing import Callable
 from rethinkdb.ast import RqlBinary, RqlQuery, RqlTzinfo
 from rethinkdb.errors import ReqlDriverError
 
-__all__ = ["ReQLEncoder", "ReQLDecoder", "recursively_make_hashable"]
+__all__ = ["ReQLEncoder", "ReQLDecoder"]
 
 
 class ReQLEncoder(json.JSONEncoder):

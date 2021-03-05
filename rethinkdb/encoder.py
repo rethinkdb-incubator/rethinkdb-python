@@ -79,7 +79,7 @@ class ReQLDecoder(json.JSONDecoder):
         object_pairs_hook=None,
         reql_format_opts=None,
     ):
-        custom_object_hook = object_hook or self.convert_pseudotype
+        custom_object_hook = object_hook or self.convert_pseudo_type
 
         super().__init__(
             object_hook=custom_object_hook,
@@ -139,11 +139,11 @@ class ReQLDecoder(json.JSONDecoder):
                 f'Unknown {format_name} run option "{pseudo_type_format}".'
             )
 
-    def convert_pseudotype(self, obj: dict):
+    def convert_pseudo_type(self, obj: dict):
         reql_type = obj.get("$reql_type$")
 
         if reql_type is None:
-            # If there was no pseudotype, or the relevant format is raw, return
+            # If there was no pseudo_type, or the relevant format is raw, return
             # the original object
             return obj
 

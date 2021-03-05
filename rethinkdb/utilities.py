@@ -14,23 +14,21 @@ class EnhancedTuple:  # pylint: disable=too-few-public-methods
     to construct the query representation used by the pretty printer.
     """
 
-    # N.B Python 2.x doesn't allow keyword default arguments after *seq
-    #     In Python 3.x we can rewrite this as `__init__(self, *seq, intsp=''`
-    def __init__(self, *seq, **opts):
-        self.seq = seq
-        self.intsp = opts.pop("intsp", "")
+    def __init__(self, *sequence, int_separator=""):
+        self.sequence = sequence
+        self.int_separator = int_separator
 
     def __iter__(self):
-        itr = iter(self.seq)
+        iterator = iter(self.sequence)
 
         try:
-            for sub in next(itr):
+            for sub in next(iterator):
                 yield sub
         except StopIteration:
             return
 
-        for token in itr:
-            for sub in self.intsp:
+        for token in iterator:
+            for sub in self.int_separator:
                 yield sub
 
             for sub in token:

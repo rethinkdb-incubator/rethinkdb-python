@@ -35,6 +35,8 @@ Changed
 * `HandshakeV1_0` raises `InvalidHandshakeStateError` when an unrecognized state called in `next_message`
 * Moved `ReQLEncoder`, `ReQLDecoder`, `recursively_make_hashable` to `encoder` module
 * Moved `T` to `utilities` to module and renamed to `EnhancedTuple`
+* Renamed `EnhancedTuple`/`T`'s `intsp` parameter to `int_separator`
+* Renamed `recursively_make_hashable` to `make_hashable`
 
 Removed
 ~~~~~~~

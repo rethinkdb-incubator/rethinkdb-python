@@ -10,7 +10,7 @@ __all__ = ["EnhancedTuple", "chain_to_bytes"]
 class EnhancedTuple:  # pylint: disable=too-few-public-methods
     """
     This 'enhanced' tuple recursively iterates over it's elements allowing us to
-    construct nested heirarchies that insert subsequences into tree. It's used
+    construct nested hierarchies that insert subsequences into tree. It's used
     to construct the query representation used by the pretty printer.
     """
 

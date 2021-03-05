@@ -21,49 +21,22 @@ TODO: What AST module is
 
 # TODO: Check that we pass the right parameters when calling super's init.
 
-__all__ = ["expr", "RqlQuery", "ReQLEncoder", "ReQLDecoder"]
+__all__ = ["expr", "RqlQuery", "RqlBinary", "RqlTzinfo"]
 
 import base64
 import binascii
 import collections
 import datetime
-import json
 import threading
-from typing import Callable, List
+from typing import Any, List, Optional
 from typing import Union as TUnion
 
 from rethinkdb import ql2_pb2
 from rethinkdb.errors import QueryPrinter, ReqlDriverCompileError, ReqlDriverError
 from rethinkdb.repl import Repl
+from rethinkdb.utilities import EnhancedTuple
 
 P_TERM = ql2_pb2.Term.TermType
-
-
-# This 'enhanced' tuple recursively iterates over it's elements allowing us to
-# construct nested heirarchies that insert subsequences into tree. It's used
-# to construct the query representation used by the pretty printer.
-class T(object):
-    # N.B Python 2.x doesn't allow keyword default arguments after *seq
-    #     In Python 3.x we can rewrite this as `__init__(self, *seq, intsp=''`
-    def __init__(self, *seq, **opts):
-        self.seq = seq
-        self.intsp = opts.pop("intsp", "")
-
-    def __iter__(self):
-        itr = iter(self.seq)
-
-        try:
-            for sub in next(itr):
-                yield sub
-        except StopIteration:
-            return
-
-        for token in itr:
-            for sub in self.intsp:
-                yield sub
-
-            for sub in token:
-                yield sub
 
 
 class RqlQuery(object):
@@ -75,6 +48,7 @@ class RqlQuery(object):
     def __init__(self, *args, **optargs: dict):
         self._args = [expr(e) for e in args]
         self.optargs = {k: expr(v) for k, v in optargs.items()}
+        self.term_type: Optional[int] = None
 
     # TODO: add Connection type to connection when net module is migrated
     # TODO: add return value when net module is migrated
@@ -97,7 +71,9 @@ class RqlQuery(object):
 
             raise ReqlDriverError("RqlQuery.run must be given a connection to run on.")
 
-        return connection._start(self, **global_optargs)
+        return connection._start(  # pylint: disable=protected-access
+            self, **global_optargs
+        )
 
     def __str__(self) -> str:
         """
@@ -118,7 +94,9 @@ class RqlQuery(object):
         Compile the query to a json-serializable object.
         """
 
-        res = [self.term_type, self._args]
+        # TODO: Have a more specific typing here
+        res: List[Any] = [self.term_type, self._args]
+
         if len(self.optargs) > 0:
             res.append(self.optargs)
 
@@ -597,14 +575,19 @@ class RqlBoolOperQuery(RqlQuery):
 
     def compose(self, args, optargs):
         term_args = [
-            T("r.expr(", args[i], ")") if needs_wrap(self._args[i]) else args[i]
+            EnhancedTuple("r.expr(", args[i], ")")
+            if needs_wrap(self._args[i])
+            else args[i]
             for i in range(len(args))
         ]
 
         if self.infix:
-            return T("(", T(*term_args, intsp=[" ", self.statement_infix, " "]), ")")
+            infix = EnhancedTuple(*term_args, intsp=[" ", self.statement_infix, " "])
+            return EnhancedTuple("(", infix, ")")
 
-        return T("r.", self.statement, "(", T(*term_args, intsp=", "), ")")
+        return EnhancedTuple(
+            "r.", self.statement, "(", EnhancedTuple(*term_args, intsp=", "), ")"
+        )
 
 
 class RqlBiOperQuery(RqlQuery):
@@ -614,11 +597,15 @@ class RqlBiOperQuery(RqlQuery):
 
     def compose(self, args, optargs):
         term_args = [
-            T("r.expr(", args[i], ")") if needs_wrap(self._args[i]) else args[i]
+            EnhancedTuple("r.expr(", args[i], ")")
+            if needs_wrap(self._args[i])
+            else args[i]
             for i in range(len(args))
         ]
 
-        return T("(", T(*term_args, intsp=[" ", self.statement, " "]), ")")
+        return EnhancedTuple(
+            "(", EnhancedTuple(*term_args, intsp=[" ", self.statement, " "]), ")"
+        )
 
 
 class RqlBiCompareOperQuery(RqlBiOperQuery):
@@ -644,23 +631,25 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
 
 class RqlTopLevelQuery(RqlQuery):
     def compose(self, args, optargs):
-        args.extend([T(key, "=", value) for key, value in optargs.items()])
-        return T("r.", self.statement, "(", T(*(args), intsp=", "), ")")
+        args.extend([EnhancedTuple(key, "=", value) for key, value in optargs.items()])
+        return EnhancedTuple(
+            "r.", self.statement, "(", EnhancedTuple(*(args), intsp=", "), ")"
+        )
 
 
 class RqlMethodQuery(RqlQuery):
     def compose(self, args, optargs):
         if len(args) == 0:
-            return T("r.", self.statement, "()")
+            return EnhancedTuple("r.", self.statement, "()")
 
         if needs_wrap(self._args[0]):
-            args[0] = T("r.expr(", args[0], ")")
+            args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
         restargs = args[1:]
-        restargs.extend([T(k, "=", v) for k, v in optargs.items()])
-        restargs = T(*restargs, intsp=", ")
+        restargs.extend([EnhancedTuple(k, "=", v) for k, v in optargs.items()])
+        restargs = EnhancedTuple(*restargs, intsp=", ")
 
-        return T(args[0], ".", self.statement, "(", restargs, ")")
+        return EnhancedTuple(args[0], ".", self.statement, "(", restargs, ")")
 
 
 class RqlBracketQuery(RqlMethodQuery):
@@ -676,15 +665,16 @@ class RqlBracketQuery(RqlMethodQuery):
     def compose(self, args, optargs):
         if self.bracket_operator:
             if needs_wrap(self._args[0]):
-                args[0] = T("r.expr(", args[0], ")")
-            return T(args[0], "[", T(*args[1:], intsp=[","]), "]")
+                args[0] = EnhancedTuple("r.expr(", args[0], ")")
+            return EnhancedTuple(
+                args[0], "[", EnhancedTuple(*args[1:], intsp=[","]), "]"
+            )
 
         return super().compose(self, args, optargs)
 
 
 # TODO
-# Maybe move this class somewhere else? It may not be only used
-# by queries
+# Maybe move this class somewhere else? It may not be only used by queries
 class RqlTzinfo(datetime.tzinfo):
     """
     RethinkDB timezone information.
@@ -699,6 +689,7 @@ class RqlTzinfo(datetime.tzinfo):
         self.delta = datetime.timedelta(hours=hours, minutes=minutes)
 
     def __getinitargs__(self):
+        # Consciously return a tuple
         return (self.offsetstr,)
 
     def __copy__(self):
@@ -715,119 +706,6 @@ class RqlTzinfo(datetime.tzinfo):
 
     def dst(self, dt):
         return datetime.timedelta(0)
-
-
-# Python only allows immutable built-in types to be hashed, such as for keys in
-# a dict. This means we can't use lists or dicts as keys in grouped data objects,
-# so we convert them to tuples and frozensets, respectively. This may make it a
-# little harder for users to work with converted grouped data, unless they do a
-# simple iteration over the result.
-def recursively_make_hashable(obj):
-    if isinstance(obj, list):
-        return tuple([recursively_make_hashable(i) for i in obj])
-
-    if isinstance(obj, dict):
-        return frozenset([(k, recursively_make_hashable(v)) for k, v in obj.items()])
-
-    return obj
-
-
-class ReQLEncoder(json.JSONEncoder):
-    """
-    Default JSONEncoder subclass to handle query conversion.
-    """
-
-    def __init__(self):
-        super().__init__(
-            self,
-            ensure_ascii=False,
-            allow_nan=False,
-            check_circular=False,
-            separators=(",", ":"),
-        )
-
-    def default(self, obj):
-        if isinstance(obj, RqlQuery):
-            return obj.build()
-        return super().default(self, obj)
-
-
-class ReQLDecoder(json.JSONDecoder):
-    """
-    Default JSONDecoder subclass to handle pseudo-type conversion.
-    """
-
-    def __init__(self, reql_format_opts=None):
-        super().__init__(self, object_hook=self.convert_pseudotype)
-        self.reql_format_opts = reql_format_opts or {}
-
-    def convert_time(self, obj):
-        if "epoch_time" not in obj:
-            raise ReqlDriverError(
-                f"pseudo-type TIME object {json.dumps(obj)} does not "
-                'have expected field "epoch_time".'
-            )
-
-        if "timezone" in obj:
-            return datetime.datetime.fromtimestamp(
-                obj["epoch_time"], RqlTzinfo(obj["timezone"])
-            )
-
-        return datetime.datetime.utcfromtimestamp(obj["epoch_time"])
-
-    @staticmethod
-    def convert_grouped_data(obj):
-        if "data" not in obj:
-            raise ReqlDriverError(
-                f"pseudo-type GROUPED_DATA object {json.dumps(obj)} does not"
-                'have the expected field "data".'
-            )
-
-        return dict([(recursively_make_hashable(k), v) for k, v in obj["data"]])
-
-    @staticmethod
-    def convert_binary(obj):
-        if "data" not in obj:
-            raise ReqlDriverError(
-                f"pseudo-type BINARY object {json.dumps(obj)} does not have "
-                'the expected field "data".'
-            )
-
-        return RqlBinary(base64.b64decode(obj["data"].encode("utf-8")))
-
-    def _convert_pseudotype(self, obj: dict, format_name: str, converter: Callable):
-        """
-        Convert pseudo types.
-        """
-
-        pseudotype_format = self.reql_format_opts.get(format_name)
-
-        if pseudotype_format is None or pseudotype_format == "native":
-            return converter(obj)
-        elif pseudotype_format != "raw":
-            raise ReqlDriverError(
-                f'Unknown {format_name} run option "{pseudotype_format}".'
-            )
-
-    def convert_pseudotype(self, obj: dict):
-        reql_type = obj.get("$reql_type$")
-
-        if reql_type is None:
-            # If there was no pseudotype, or the relevant format is raw, return
-            # the original object
-            return obj
-
-        if reql_type == "TIME":
-            self._convert_pseudotype(obj, "time_format", self.convert_time)
-        elif reql_type == "GROUPED_DATA":
-            self._convert_pseudotype(obj, "group_format", self.convert_grouped_data)
-        elif reql_type == "BINARY":
-            self._convert_pseudotype(obj, "binary_format", self.convert_binary)
-        elif reql_type == "GEOMETRY":
-            # No special support for this, just return the raw object
-            return obj
-
-        raise ReqlDriverError(f'Unknown pseudo-type "{reql_type}"')
 
 
 class Datum(RqlQuery):
@@ -862,7 +740,7 @@ class MakeArray(RqlQuery):
     term_type = P_TERM.MAKE_ARRAY
 
     def compose(self, args, optargs):
-        return T("[", T(*args, intsp=", "), "]")
+        return EnhancedTuple("[", EnhancedTuple(*args, intsp=", "), "]")
 
 
 class MakeObj(RqlQuery):
@@ -881,10 +759,13 @@ class MakeObj(RqlQuery):
         return self.optargs
 
     def compose(self, args, optargs):
-        return T(
+        return EnhancedTuple(
             "r.expr({",
-            T(
-                *[T(repr(key), ": ", value) for key, value in optargs.items()],
+            EnhancedTuple(
+                *[
+                    EnhancedTuple(repr(key), ": ", value)
+                    for key, value in optargs.items()
+                ],
                 intsp=", ",
             ),
             "})",
@@ -973,9 +854,9 @@ class Not(RqlQuery):
 
     def compose(self, args, optargs):
         if isinstance(self._args[0], Datum):
-            args[0] = T("r.expr(", args[0], ")")
+            args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
-        return T("(~", args[0], ")")
+        return EnhancedTuple("(~", args[0], ")")
 
 
 class Add(RqlBiOperQuery):
@@ -1091,9 +972,9 @@ class Slice(RqlBracketQuery):
     def compose(self, args, optargs):
         if self.bracket_operator:
             if needs_wrap(self._args[0]):
-                args[0] = T("r.expr(", args[0], ")")
+                args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
-            return T(args[0], "[", args[1], ":", args[2], "]")
+            return EnhancedTuple(args[0], "[", args[1], ":", args[2], "]")
 
         return RqlBracketQuery.compose(self, args, optargs)
 
@@ -1217,12 +1098,18 @@ class FunCall(RqlQuery):
 
     def compose(self, args, optargs):
         if len(args) != 2:
-            return T("r.do(", T(T(*(args[1:]), intsp=", "), args[0], intsp=", "), ")")
+            return EnhancedTuple(
+                "r.do(",
+                EnhancedTuple(
+                    EnhancedTuple(*(args[1:]), intsp=", "), args[0], intsp=", "
+                ),
+                ")",
+            )
 
         if isinstance(self._args[1], Datum):
-            args[1] = T("r.expr(", args[1], ")")
+            args[1] = EnhancedTuple("r.expr(", args[1], ")")
 
-        return T(args[1], ".do(", args[0], ")")
+        return EnhancedTuple(args[1], ".do(", args[0], ")")
 
 
 class Table(RqlQuery):
@@ -1296,12 +1183,14 @@ class Table(RqlQuery):
         return UUID(self, *args, **kwargs)
 
     def compose(self, args, optargs):
-        args.extend([T(k, "=", v) for k, v in optargs.items()])
+        args.extend([EnhancedTuple(k, "=", v) for k, v in optargs.items()])
 
         if isinstance(self._args[0], DB):
-            return T(args[0], ".table(", T(*(args[1:]), intsp=", "), ")")
+            return EnhancedTuple(
+                args[0], ".table(", EnhancedTuple(*(args[1:]), intsp=", "), ")"
+            )
 
-        return T("r.table(", T(*(args), intsp=", "), ")")
+        return EnhancedTuple("r.table(", EnhancedTuple(*(args), intsp=", "), ")")
 
 
 class Get(RqlMethodQuery):
@@ -1732,7 +1621,7 @@ class Binary(RqlTopLevelQuery):
 
     def compose(self, args, optargs):
         if len(self._args) == 0:
-            return T("r.", self.statement, "(bytes(<data>))")
+            return EnhancedTuple("r.", self.statement, "(bytes(<data>))")
 
         return RqlTopLevelQuery.compose(self, args, optargs)
 
@@ -1898,34 +1787,6 @@ class PolygonSub(RqlMethodQuery):
     statement = "polygon_sub"
 
 
-# Returns True if IMPLICIT_VAR is found in the subquery
-def _ivar_scan(query) -> bool:
-    if not isinstance(query, RqlQuery):
-        return False
-
-    if isinstance(query, ImplicitVar):
-        return True
-
-    if any([_ivar_scan(arg) for arg in query._args]):
-        return True
-
-    if any([_ivar_scan(arg) for k, arg in query.optargs.items()]):
-        return True
-
-    return False
-
-
-# Called on arguments that should be functions
-# TODO
-# expr may return different value types. Maybe use a base one?
-def func_wrap(val: TUnion[RqlQuery, ImplicitVar, list, dict]):
-    val = expr(val)
-    if _ivar_scan(val):
-        return Func(lambda x: val)
-
-    return val
-
-
 class Func(RqlQuery):
     term_type = P_TERM.FUNC
     lock = threading.Lock()
@@ -1956,9 +1817,9 @@ class Func(RqlQuery):
         self._args.extend([MakeArray(*vrids), expr(lmbd(*vrs))])
 
     def compose(self, args, optargs):
-        return T(
+        return EnhancedTuple(
             "lambda ",
-            T(
+            EnhancedTuple(
                 *[v.compose([v._args[0].compose(None, None)], []) for v in self.vrs],
                 intsp=", ",
             ),
@@ -1980,6 +1841,23 @@ class Desc(RqlTopLevelQuery):
 class Literal(RqlTopLevelQuery):
     term_type = P_TERM.LITERAL
     statement = "literal"
+
+
+# Returns True if IMPLICIT_VAR is found in the subquery
+def _ivar_scan(query) -> bool:
+    if not isinstance(query, RqlQuery):
+        return False
+
+    if isinstance(query, ImplicitVar):
+        return True
+
+    if any([_ivar_scan(arg) for arg in query._args]):
+        return True
+
+    if any([_ivar_scan(arg) for k, arg in query.optargs.items()]):
+        return True
+
+    return False
 
 
 def needs_wrap(arg):
@@ -2016,20 +1894,30 @@ def expr(
 
     if isinstance(val, RqlQuery):
         return val
-    elif isinstance(val, collections.Callable):
+    elif isinstance(val, collections.Callable):  # type: ignore
         return Func(val)
-    elif isinstance(
-        val, str
-    ):  # TODO: Remove this since the default is to return Datum?!
+    elif isinstance(val, str):  # TODO: Default is to return Datum - Remove?
         return Datum(val)
     elif isinstance(val, (bytes, RqlBinary)):
         return Binary(val)
     elif isinstance(val, collections.Mapping):
         return MakeObj({k: expr(v, nesting_depth - 1) for k, v in val.items()})
     elif isinstance(val, collections.Iterable):
-        return MakeArray(*[expr(v, nesting_depth - 1) for v in val])
+        return MakeArray(*[expr(v, nesting_depth - 1) for v in val])  # type: ignore
     elif isinstance(val, (datetime.datetime, datetime.date)):
-        if not hasattr(val, "tzinfo") or not val.tzinfo:
+
+        date_convert_exception = ReqlDriverCompileError(
+            f"""
+            Cannot convert {type(val).__name__} to ReQL time object
+            without timezone information. You can add timezone information with
+            the third party module \"pytz\" or by constructing ReQL compatible
+            timezone values with r.make_timezone(\"[+-]HH:MM\"). Alternatively,
+            use one of ReQL's bultin time constructors, r.now, r.time,
+            or r.iso8601.
+            """
+        )
+
+        if isinstance(val, datetime.date) or not val.tzinfo:
             raise ReqlDriverCompileError(
                 f"""
             Cannot convert {type(val).__name__} to ReQL time object
@@ -2044,3 +1932,14 @@ def expr(
         return ISO8601(val.isoformat())
 
     return Datum(val)
+
+
+# Called on arguments that should be functions
+# TODO
+# expr may return different value types. Maybe use a base one?
+def func_wrap(val: TUnion[RqlQuery, ImplicitVar, list, dict]):
+    val = expr(val)
+    if _ivar_scan(val):
+        return Func(lambda x: val)
+
+    return val

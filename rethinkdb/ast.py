@@ -36,7 +36,7 @@ from rethinkdb.errors import QueryPrinter, ReqlDriverCompileError, ReqlDriverErr
 from rethinkdb.repl import Repl
 from rethinkdb.utilities import EnhancedTuple
 
-P_TERM = ql2_pb2.Term.TermType
+P_TERM = ql2_pb2.Term.TermType  # pylint: disable=invalid-name
 
 
 class RqlQuery(object):
@@ -582,11 +582,17 @@ class RqlBoolOperQuery(RqlQuery):
         ]
 
         if self.infix:
-            infix = EnhancedTuple(*term_args, intsp=[" ", self.statement_infix, " "])
+            infix = EnhancedTuple(
+                *term_args, int_separator=[" ", self.statement_infix, " "]
+            )
             return EnhancedTuple("(", infix, ")")
 
         return EnhancedTuple(
-            "r.", self.statement, "(", EnhancedTuple(*term_args, intsp=", "), ")"
+            "r.",
+            self.statement,
+            "(",
+            EnhancedTuple(*term_args, int_separator=", "),
+            ")",
         )
 
 
@@ -604,7 +610,9 @@ class RqlBiOperQuery(RqlQuery):
         ]
 
         return EnhancedTuple(
-            "(", EnhancedTuple(*term_args, intsp=[" ", self.statement, " "]), ")"
+            "(",
+            EnhancedTuple(*term_args, int_separator=[" ", self.statement, " "]),
+            ")",
         )
 
 
@@ -633,7 +641,7 @@ class RqlTopLevelQuery(RqlQuery):
     def compose(self, args, optargs):
         args.extend([EnhancedTuple(key, "=", value) for key, value in optargs.items()])
         return EnhancedTuple(
-            "r.", self.statement, "(", EnhancedTuple(*(args), intsp=", "), ")"
+            "r.", self.statement, "(", EnhancedTuple(*(args), int_separator=", "), ")"
         )
 
 
@@ -647,7 +655,7 @@ class RqlMethodQuery(RqlQuery):
 
         restargs = args[1:]
         restargs.extend([EnhancedTuple(k, "=", v) for k, v in optargs.items()])
-        restargs = EnhancedTuple(*restargs, intsp=", ")
+        restargs = EnhancedTuple(*restargs, int_separator=", ")
 
         return EnhancedTuple(args[0], ".", self.statement, "(", restargs, ")")
 
@@ -667,7 +675,7 @@ class RqlBracketQuery(RqlMethodQuery):
             if needs_wrap(self._args[0]):
                 args[0] = EnhancedTuple("r.expr(", args[0], ")")
             return EnhancedTuple(
-                args[0], "[", EnhancedTuple(*args[1:], intsp=[","]), "]"
+                args[0], "[", EnhancedTuple(*args[1:], int_separator=[","]), "]"
             )
 
         return super().compose(self, args, optargs)
@@ -740,7 +748,7 @@ class MakeArray(RqlQuery):
     term_type = P_TERM.MAKE_ARRAY
 
     def compose(self, args, optargs):
-        return EnhancedTuple("[", EnhancedTuple(*args, intsp=", "), "]")
+        return EnhancedTuple("[", EnhancedTuple(*args, int_separator=", "), "]")
 
 
 class MakeObj(RqlQuery):
@@ -766,7 +774,7 @@ class MakeObj(RqlQuery):
                     EnhancedTuple(repr(key), ": ", value)
                     for key, value in optargs.items()
                 ],
-                intsp=", ",
+                int_separator=", ",
             ),
             "})",
         )
@@ -1101,7 +1109,9 @@ class FunCall(RqlQuery):
             return EnhancedTuple(
                 "r.do(",
                 EnhancedTuple(
-                    EnhancedTuple(*(args[1:]), intsp=", "), args[0], intsp=", "
+                    EnhancedTuple(*(args[1:]), int_separator=", "),
+                    args[0],
+                    int_separator=", ",
                 ),
                 ")",
             )
@@ -1187,10 +1197,12 @@ class Table(RqlQuery):
 
         if isinstance(self._args[0], DB):
             return EnhancedTuple(
-                args[0], ".table(", EnhancedTuple(*(args[1:]), intsp=", "), ")"
+                args[0], ".table(", EnhancedTuple(*(args[1:]), int_separator=", "), ")"
             )
 
-        return EnhancedTuple("r.table(", EnhancedTuple(*(args), intsp=", "), ")")
+        return EnhancedTuple(
+            "r.table(", EnhancedTuple(*(args), int_separator=", "), ")"
+        )
 
 
 class Get(RqlMethodQuery):
@@ -1821,7 +1833,7 @@ class Func(RqlQuery):
             "lambda ",
             EnhancedTuple(
                 *[v.compose([v._args[0].compose(None, None)], []) for v in self.vrs],
-                intsp=", ",
+                int_separator=", ",
             ),
             ": ",
             args[1],

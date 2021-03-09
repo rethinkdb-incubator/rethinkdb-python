@@ -16,8 +16,12 @@
 # Copyright 2010-2016 RethinkDB, all rights reserved.
 
 """
-TODO: What AST module is
+AST module contains the way the queries are serialized and deserialized.
 """
+
+# It is known and expected that the ast module will be lot longer than the
+# usual module length, so we disabled it.
+# pylint: disable=too-many-lines
 
 # TODO: Check that we pass the right parameters when calling super's init.
 
@@ -25,10 +29,9 @@ __all__ = ["expr", "RqlQuery", "RqlBinary", "RqlTzinfo"]
 
 import base64
 import binascii
-import collections
 import datetime
 import threading
-from typing import Any, List, Optional, Mapping, Iterable, Callable
+from typing import Any, Callable, Iterable, List, Mapping, Optional
 from typing import Union as TUnion
 
 from rethinkdb import ql2_pb2
@@ -39,15 +42,15 @@ from rethinkdb.utilities import EnhancedTuple
 P_TERM = ql2_pb2.Term.TermType  # pylint: disable=invalid-name
 
 
-class RqlQuery(object):
+class RqlQuery:
     """
     The RethinkDB Query object which determines the operations we can request
     from the server.
     """
 
-    def __init__(self, *args, **optargs: dict):
+    def __init__(self, *args, **kwargs: dict):
         self._args = [expr(e) for e in args]
-        self.optargs = {k: expr(v) for k, v in optargs.items()}
+        self.kwargs = {k: expr(v) for k, v in kwargs.items()}
         self.term_type: Optional[int] = None
 
     # TODO: add Connection type to connection when net module is migrated
@@ -97,8 +100,8 @@ class RqlQuery(object):
         # TODO: Have a more specific typing here
         res: List[Any] = [self.term_type, self._args]
 
-        if len(self.optargs) > 0:
-            res.append(self.optargs)
+        if len(self.kwargs) > 0:
+            res.append(self.kwargs)
 
         return res
 
@@ -566,14 +569,14 @@ class RqlQuery(object):
 
 
 class RqlBoolOperQuery(RqlQuery):
-    def __init__(self, *args, **optargs):
-        super().__init__(self, *args, **optargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
         self.infix = False
 
     def set_infix(self):
         self.infix = True
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         term_args = [
             EnhancedTuple("r.expr(", args[i], ")")
             if needs_wrap(self._args[i])
@@ -601,7 +604,7 @@ class RqlBiOperQuery(RqlQuery):
     RethinkDB binary query operation.
     """
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         term_args = [
             EnhancedTuple("r.expr(", args[i], ")")
             if needs_wrap(self._args[i])
@@ -621,8 +624,8 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
     RethinkDB comparison operator query.
     """
 
-    def __init__(self, *args, **optargs):
-        super().__init__(self, *args, **optargs)
+    def __init__(self, *args, **kwargs):
+        super().__init__(self, *args, **kwargs)
 
         for arg in args:
             if hasattr(arg, "infix"):
@@ -638,15 +641,15 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
 
 
 class RqlTopLevelQuery(RqlQuery):
-    def compose(self, args, optargs):
-        args.extend([EnhancedTuple(key, "=", value) for key, value in optargs.items()])
+    def compose(self, args, kwargs):
+        args.extend([EnhancedTuple(key, "=", value) for key, value in kwargs.items()])
         return EnhancedTuple(
             "r.", self.statement, "(", EnhancedTuple(*(args), int_separator=", "), ")"
         )
 
 
 class RqlMethodQuery(RqlQuery):
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if len(args) == 0:
             return EnhancedTuple("r.", self.statement, "()")
 
@@ -654,23 +657,23 @@ class RqlMethodQuery(RqlQuery):
             args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
         restargs = args[1:]
-        restargs.extend([EnhancedTuple(k, "=", v) for k, v in optargs.items()])
+        restargs.extend([EnhancedTuple(k, "=", v) for k, v in kwargs.items()])
         restargs = EnhancedTuple(*restargs, int_separator=", ")
 
         return EnhancedTuple(args[0], ".", self.statement, "(", restargs, ")")
 
 
 class RqlBracketQuery(RqlMethodQuery):
-    def __init__(self, *args, **optargs):
+    def __init__(self, *args, **kwargs):
         self.bracket_operator = False
 
-        if "bracket_operator" in optargs:
-            self.bracket_operator = optargs["bracket_operator"]
-            del optargs["bracket_operator"]
+        if "bracket_operator" in kwargs:
+            self.bracket_operator = kwargs["bracket_operator"]
+            del kwargs["bracket_operator"]
 
-        super().__init__(self, *args, **optargs)
+        super().__init__(self, *args, **kwargs)
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if self.bracket_operator:
             if needs_wrap(self._args[0]):
                 args[0] = EnhancedTuple("r.expr(", args[0], ")")
@@ -678,11 +681,9 @@ class RqlBracketQuery(RqlMethodQuery):
                 args[0], "[", EnhancedTuple(*args[1:], int_separator=[","]), "]"
             )
 
-        return super().compose(self, args, optargs)
+        return super().compose(self, args, kwargs)
 
 
-# TODO
-# Maybe move this class somewhere else? It may not be only used by queries
 class RqlTzinfo(datetime.tzinfo):
     """
     RethinkDB timezone information.
@@ -736,7 +737,7 @@ class Datum(RqlQuery):
     def build(self):
         return self.data
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return repr(self.data)
 
 
@@ -747,7 +748,7 @@ class MakeArray(RqlQuery):
 
     term_type = P_TERM.MAKE_ARRAY
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return EnhancedTuple("[", EnhancedTuple(*args, int_separator=", "), "]")
 
 
@@ -761,18 +762,18 @@ class MakeObj(RqlQuery):
             if not isinstance(key, str):
                 raise ReqlDriverCompileError("Object keys must be strings.")
 
-            self.optargs[key] = expr(value)
+            self.kwargs[key] = expr(value)
 
     def build(self):
-        return self.optargs
+        return self.kwargs
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return EnhancedTuple(
             "r.expr({",
             EnhancedTuple(
                 *[
                     EnhancedTuple(repr(key), ": ", value)
-                    for key, value in optargs.items()
+                    for key, value in kwargs.items()
                 ],
                 int_separator=", ",
             ),
@@ -783,7 +784,7 @@ class MakeObj(RqlQuery):
 class Var(RqlQuery):
     term_type = P_TERM.VAR
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return "var_" + args[0]
 
 
@@ -823,7 +824,7 @@ class ImplicitVar(RqlQuery):
     def __call__(self, *args, **kwargs):
         raise TypeError("'r.row' is not callable, use 'r.row[...]' instead")
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return "r.row"
 
 
@@ -860,7 +861,7 @@ class Ge(RqlBiCompareOperQuery):
 class Not(RqlQuery):
     term_type = P_TERM.NOT
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if isinstance(self._args[0], Datum):
             args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
@@ -977,14 +978,14 @@ class Slice(RqlBracketQuery):
     statement = "slice"
 
     # Slice has a special bracket syntax, implemented here
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if self.bracket_operator:
             if needs_wrap(self._args[0]):
                 args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
             return EnhancedTuple(args[0], "[", args[1], ":", args[2], "]")
 
-        return RqlBracketQuery.compose(self, args, optargs)
+        return RqlBracketQuery.compose(self, args, kwargs)
 
 
 class Skip(RqlMethodQuery):
@@ -1104,7 +1105,7 @@ class FunCall(RqlQuery):
         args = [func_wrap(args[-1])] + list(args[:-1])
         super().__init__(self, *args)
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if len(args) != 2:
             return EnhancedTuple(
                 "r.do(",
@@ -1192,8 +1193,8 @@ class Table(RqlQuery):
     def uuid(self, *args, **kwargs):
         return UUID(self, *args, **kwargs)
 
-    def compose(self, args, optargs):
-        args.extend([EnhancedTuple(k, "=", v) for k, v in optargs.items()])
+    def compose(self, args, kwargs):
+        args.extend([EnhancedTuple(k, "=", v) for k, v in kwargs.items()])
 
         if isinstance(self._args[0], DB):
             return EnhancedTuple(
@@ -1629,13 +1630,13 @@ class Binary(RqlTopLevelQuery):
 
         # Kind of a hack to get around composing
         self._args = []
-        self.optargs = {}
+        self.kwargs = {}
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         if len(self._args) == 0:
             return EnhancedTuple("r.", self.statement, "(bytes(<data>))")
 
-        return RqlTopLevelQuery.compose(self, args, optargs)
+        return RqlTopLevelQuery.compose(self, args, kwargs)
 
     def build(self):
         if len(self._args) == 0:
@@ -1828,7 +1829,7 @@ class Func(RqlQuery):
         self.vrs = vrs
         self._args.extend([MakeArray(*vrids), expr(lmbd(*vrs))])
 
-    def compose(self, args, optargs):
+    def compose(self, args, kwargs):
         return EnhancedTuple(
             "lambda ",
             EnhancedTuple(
@@ -1866,7 +1867,7 @@ def _ivar_scan(query) -> bool:
     if any([_ivar_scan(arg) for arg in query._args]):
         return True
 
-    if any([_ivar_scan(arg) for k, arg in query.optargs.items()]):
+    if any([_ivar_scan(arg) for k, arg in query.kwargs.items()]):
         return True
 
     return False
@@ -1917,18 +1918,6 @@ def expr(
     elif isinstance(val, Iterable):
         return MakeArray(*[expr(v, nesting_depth - 1) for v in val])  # type: ignore
     elif isinstance(val, (datetime.datetime, datetime.date)):
-
-        date_convert_exception = ReqlDriverCompileError(
-            f"""
-            Cannot convert {type(val).__name__} to ReQL time object
-            without timezone information. You can add timezone information with
-            the third party module \"pytz\" or by constructing ReQL compatible
-            timezone values with r.make_timezone(\"[+-]HH:MM\"). Alternatively,
-            use one of ReQL's bultin time constructors, r.now, r.time,
-            or r.iso8601.
-            """
-        )
-
         if isinstance(val, datetime.date) or not val.tzinfo:
             raise ReqlDriverCompileError(
                 f"""

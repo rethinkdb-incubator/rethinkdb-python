@@ -37,6 +37,7 @@ Changed
 * Moved `T` to `utilities` to module and renamed to `EnhancedTuple`
 * Renamed `EnhancedTuple`/`T`'s `intsp` parameter to `int_separator`
 * Renamed `recursively_make_hashable` to `make_hashable`
+* Renamed `optargs` to `kwargs` in `ast` module
 
 Removed
 ~~~~~~~

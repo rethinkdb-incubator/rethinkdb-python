@@ -28,7 +28,7 @@ import binascii
 import collections
 import datetime
 import threading
-from typing import Any, List, Optional
+from typing import Any, List, Optional, Mapping, Iterable, Callable
 from typing import Union as TUnion
 
 from rethinkdb import ql2_pb2
@@ -1888,9 +1888,9 @@ def expr(
         RqlBinary,
         datetime.date,
         datetime.datetime,
-        collections.Mapping,
-        collections.Iterable,
-        collections.Callable,
+        Mapping,
+        Iterable,
+        Callable,
     ],
     nesting_depth: int = 20,
 ):
@@ -1906,15 +1906,15 @@ def expr(
 
     if isinstance(val, RqlQuery):
         return val
-    elif isinstance(val, collections.Callable):  # type: ignore
+    elif isinstance(val, Callable):  # type: ignore
         return Func(val)
     elif isinstance(val, str):  # TODO: Default is to return Datum - Remove?
         return Datum(val)
     elif isinstance(val, (bytes, RqlBinary)):
         return Binary(val)
-    elif isinstance(val, collections.Mapping):
+    elif isinstance(val, Mapping):
         return MakeObj({k: expr(v, nesting_depth - 1) for k, v in val.items()})
-    elif isinstance(val, collections.Iterable):
+    elif isinstance(val, Iterable):
         return MakeArray(*[expr(v, nesting_depth - 1) for v in val])  # type: ignore
     elif isinstance(val, (datetime.datetime, datetime.date)):
 

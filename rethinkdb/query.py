@@ -249,9 +249,9 @@ def contains(*args):
     return ast.Contains(*[ast.func_wrap(arg) for arg in args])
 
 
-####################
-## orderBy orders ##
-####################
+############################
+## Ordering functionality ##
+############################
 
 def asc(*args):
     return ast.Asc(*[ast.func_wrap(arg) for arg in args])
@@ -448,6 +448,17 @@ def range(*args):
     return ast.Range(*args)
 
 
+##################
+## Time-related ##
+##################
+
+def make_timezone(*args):
+    """
+    Add timezone function.
+    """
+    return ast.RqlTzinfo(*args)
+
+
 def time(*args):
     """
     Time function.
@@ -477,6 +488,10 @@ def now(*args):
 
 
 class RqlConstant(ast.RqlQuery):
+    """
+    Rethinkdb constant.
+    Maps a real world constant to a representation for the db.
+    """
     def __init__(self, statement, term_type):
         self.statement = statement
         self.term_type = term_type
@@ -487,6 +502,7 @@ class RqlConstant(ast.RqlQuery):
 
 
 # Time enum values
+# Convert days of week into constants
 monday = RqlConstant("monday", ql2_pb2.Term.TermType.MONDAY)
 tuesday = RqlConstant("tuesday", ql2_pb2.Term.TermType.TUESDAY)
 wednesday = RqlConstant("wednesday", ql2_pb2.Term.TermType.WEDNESDAY)
@@ -495,6 +511,7 @@ friday = RqlConstant("friday", ql2_pb2.Term.TermType.FRIDAY)
 saturday = RqlConstant("saturday", ql2_pb2.Term.TermType.SATURDAY)
 sunday = RqlConstant("sunday", ql2_pb2.Term.TermType.SUNDAY)
 
+# Convert months of the year into constants
 january = RqlConstant("january", ql2_pb2.Term.TermType.JANUARY)
 february = RqlConstant("february", ql2_pb2.Term.TermType.FEBRUARY)
 march = RqlConstant("march", ql2_pb2.Term.TermType.MARCH)
@@ -510,10 +527,6 @@ december = RqlConstant("december", ql2_pb2.Term.TermType.DECEMBER)
 
 minval = RqlConstant("minval", ql2_pb2.Term.TermType.MINVAL)
 maxval = RqlConstant("maxval", ql2_pb2.Term.TermType.MAXVAL)
-
-
-def make_timezone(*args):
-    return ast.RqlTzinfo(*args)
 
 
 # Merge values

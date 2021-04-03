@@ -188,102 +188,260 @@ class RqlQuery:
         return query
 
     # Non-operator versions of the above
-    def eq(self, *args):
+    def eq(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__eq__``.
+        """
         return Eq(self, *args)
 
-    def ne(self, *args):
+    def ne(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__ne__``.
+        """
         return Ne(self, *args)
 
-    def lt(self, *args):
+    def lt(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__lt__``.
+        """
         return Lt(self, *args)
 
-    def le(self, *args):
+    def le(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__le__``.
+        """
         return Le(self, *args)
 
-    def gt(self, *args):
+    def gt(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__gt__``.
+        """
         return Gt(self, *args)
 
-    def ge(self, *args):
+    def ge(self, *args):  # pylint: disable=invalid-name
+        """
+        Non-operator version of ``__ge__``.
+        """
         return Ge(self, *args)
 
     def add(self, *args):
+        """
+        Non-operator version of ``__add__``.
+        """
         return Add(self, *args)
 
     def sub(self, *args):
+        """
+        Non-operator version of ``__sub__``.
+        """
         return Sub(self, *args)
 
     def mul(self, *args):
+        """
+        Non-operator version of ``__mul__``.
+        """
         return Mul(self, *args)
 
     def div(self, *args):
+        """
+        Non-operator version of ``__div__``.
+        """
         return Div(self, *args)
 
     def mod(self, *args):
+        """
+        Non-operator version of ``__mod__``.
+        """
         return Mod(self, *args)
 
     def bit_and(self, *args):
+        """
+        Bitwise AND operator.
+
+        A bitwise AND is a binary operation that takes two equal-length binary
+        representations and performs the logical AND operation on each pair of
+        the corresponding bits, which is equivalent to multiplying them. Thus,
+        if both bits in the compared position are 1, the bit in the resulting
+        binary representation is 1 (1 × 1 = 1); otherwise, the result is
+        0 (1 × 0 = 0 and 0 × 0 = 0).
+        """
         return BitAnd(self, *args)
 
     def bit_or(self, *args):
+        """
+        Bitwise OR operator.
+
+        A bitwise OR is a binary operation that takes two bit patterns of equal
+        length and performs the logical inclusive OR operation on each pair of
+        corresponding bits. The result in each position is 0 if both bits are 0,
+        while otherwise the result is 1.
+        """
         return BitOr(self, *args)
 
     def bit_xor(self, *args):
+        """
+        Bitwise XOR operator.
+
+        A bitwise XOR is a binary operation that takes two bit patterns of equal
+        length and performs the logical exclusive OR operation on each pair of
+        corresponding bits. The result in each position is 1 if only the first
+        bit is 1 or only the second bit is 1, but will be 0 if both are 0 or
+        both are 1. In this we perform the comparison of two bits, being 1 if
+        the two bits are different, and 0 if they are the same.
+        """
         return BitXor(self, *args)
 
     def bit_not(self, *args):
+        """
+        Bitwise NOT operator.
+
+        A bitwise NOT, or complement, is a unary operation that performs logical
+        negation on each bit, forming the ones’ complement of the given binary
+        value. Bits that are 0 become 1, and those that are 1 become 0.
+        """
         return BitNot(self, *args)
 
     def bit_sal(self, *args):
+        """
+        Bitwise SAL operator.
+
+        In an arithmetic shift (also referred to as signed shift), like a
+        logical shift, the bits that slide off the end disappear (except for the
+        last, which goes into the carry flag). But in an arithmetic shift, the
+        spaces are filled in such a way to preserve the sign of the number being
+        slid. For this reason, arithmetic shifts are better suited for signed
+        numbers in two’s complement format.
+
+        Note: SHL and SAL are the same, and differentiation only happens because
+        SAR and SHR (right shifting) has differences in their implementation.
+        """
         return BitSal(self, *args)
 
     def bit_sar(self, *args):
+        """
+        Bitwise SAR operator.
+
+        In an arithmetic shift (also referred to as signed shift), like a
+        logical shift, the bits that slide off the end disappear (except for the
+        last, which goes into the carry flag). But in an arithmetic shift, the
+        spaces are filled in such a way to preserve the sign of the number being
+        slid. For this reason, arithmetic shifts are better suited for signed
+        numbers in two’s complement format.
+        """
         return BitSar(self, *args)
 
     def floor(self, *args):
+        """
+        Rounds the given value down, returning the largest integer value less
+        than or equal to the given value (the value’s floor).
+        """
         return Floor(self, *args)
 
     def ceil(self, *args):
+        """
+        Rounds the given value up, returning the smallest integer value greater
+        than or equal to the given value (the value’s ceiling).
+        """
         return Ceil(self, *args)
 
     def round(self, *args):
+        """
+        Rounds the given value to the nearest whole integer.
+        """
         return Round(self, *args)
 
     def and_(self, *args):
+        """
+        Non-operator version of ``__and__``.
+        """
         return And(self, *args)
 
     def or_(self, *args):
+        """
+        Non-operator version of ``__or__``.
+        """
         return Or(self, *args)
 
     def not_(self, *args):
+        """
+        Non-operator version of ``__not__``.
+        """
         return Not(self, *args)
 
     # N.B. Cannot use 'in' operator because it must return a boolean
     def contains(self, *args):
+        """
+        When called with values, returns True if a sequence contains all the
+        specified values. When called with predicate functions, returns True if
+        for each predicate there exists at least one element of the stream where
+        that predicate returns True.
+        """
         return Contains(self, *[func_wrap(arg) for arg in args])
 
     def has_fields(self, *args):
+        """
+        Test if an object has one or more fields. An object has a field if it
+        has that key and the key has a non-null value. For instance, the object
+        {'a': 1,'b': 2,'c': null} has the fields a and b.
+
+        When applied to a single object, has_fields returns true if the object
+        has the fields and false if it does not. When applied to a sequence, it
+        will return a new sequence (an array or stream) containing the elements
+        that have the specified fields.
+        """
         return HasFields(self, *args)
 
     def with_fields(self, *args):
+        """
+        Plucks one or more attributes from a sequence of objects, filtering out
+        any objects in the sequence that do not have the specified fields.
+        Functionally, this is identical to has_fields followed by pluck on a
+        sequence.
+        """
         return WithFields(self, *args)
 
     def keys(self, *args):
+        """
+        Return an array containing all of an object’s keys. Note that the keys
+        will be sorted as described in ReQL data types (for strings,
+        lexicographically).
+        """
         return Keys(self, *args)
 
     def values(self, *args):
+        """
+        Return an array containing all of an object’s values. values()
+        guarantees the values will come out in the same order as keys.
+        """
         return Values(self, *args)
 
     def changes(self, *args, **kwargs):
+        """
+        Turn a query into a changefeed, an infinite stream of objects
+        representing changes to the query’s results as they occur. A changefeed
+        may return changes to a table or an individual document (a “point”
+        changefeed). Commands such as filter or map may be used before the
+        changes command to transform or filter the output, and many commands
+        that operate on sequences can be chained after changes.
+        """
         return Changes(self, *args, **kwargs)
 
     # Polymorphic object/sequence operations
     def pluck(self, *args):
+        """
+        Plucks out one or more attributes from either an object or a sequence of
+        objects (projection).
+        """
         return Pluck(self, *args)
 
     def without(self, *args):
+        """
+        The opposite of pluck; takes an object or a sequence of objects, and
+        returns them with the specified paths removed.
+        """
         return Without(self, *args)
 
-    def do(self, *args):
+    def do(self, *args):  # pylint: disable=invalid-name
         return FunCall(self, *args)
 
     def default(self, *args):

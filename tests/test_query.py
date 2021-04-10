@@ -28,6 +28,6 @@ def test_js(mock_ast):
   mock_ast.JavaScript.return_value = Mock()
   
   result = js("foo", foo="foo")
-  mock_ast.JavaScript.assert.called_once_with("foo", foo="foo")
+  mock_ast.JavaScript.assert_called_once_with("foo", foo="foo")
   
   assert result == mock_ast.JavaScript.return_value

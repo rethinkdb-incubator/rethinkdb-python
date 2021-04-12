@@ -18,7 +18,16 @@ from rethinkdb.query import (
   grant,
   branch,
   union,
-  map
+  map,
+  group,
+  reduce,
+  count,
+  sum,
+  avg,
+  min,
+  max,
+  distinct,
+  contains
 )
 
 
@@ -181,3 +190,93 @@ def test_map(mock_ast):
   mock_ast.Map.assert_called_once_with(["foo"])
   
   assert result == mock_ast.Map.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_group(mock_ast):
+  mock_ast.Group.return_value = Mock()
+  
+  result = group(["foo"])
+  mock_ast.Group.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Group.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_reduce(mock_ast):
+  mock_ast.Reduce.return_value = Mock()
+  
+  result = reduce(["foo"])
+  mock_ast.Reduce.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Reduce.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_count(mock_ast):
+  mock_ast.Count.return_value = Mock()
+  
+  result = count(["foo"])
+  mock_ast.Count.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Count.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_sum(mock_ast):
+  mock_ast.Sum.return_value = Mock()
+  
+  result = sum(["foo"])
+  mock_ast.Sum.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Sum.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_avg(mock_ast):
+  mock_ast.Avg.return_value = Mock()
+  
+  result = avg(["foo"])
+  mock_ast.Avg.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Avg.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_min(mock_ast):
+  mock_ast.Min.return_value = Mock()
+  
+  result = min(["foo"])
+  mock_ast.Min.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Min.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_max(mock_ast):
+  mock_ast.Max.return_value = Mock()
+  
+  result = max(["foo"])
+  mock_ast.Max.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Max.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_distinct(mock_ast):
+  mock_ast.Distinct.return_value = Mock()
+  
+  result = distinct(["foo"])
+  mock_ast.Distinct.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Distinct.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_contains(mock_ast):
+  mock_ast.Contains.return_value = Mock()
+  
+  result = contains(["foo"])
+  mock_ast.Contains.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Contains.return_value

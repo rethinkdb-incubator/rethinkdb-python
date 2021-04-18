@@ -56,7 +56,21 @@ from rethinkdb.query import (
   type_of,
   info,
   binary,
-  range
+  range,
+  make_timezone,
+  time,
+  iso8601,
+  epoch_time,
+  now,
+  literal,
+  object,
+  uuid,
+  geojson,
+  point,
+  line,
+  polygon,
+  distance,
+  circle
 )
 
 
@@ -335,7 +349,7 @@ def test_desc(mock_ast):
 def test_eq(mock_ast):
   mock_ast.Eq.return_value = Mock()
   
-  result = eq(["foo"])
+  result = eq("foo")
   mock_ast.Eq.assert_called_once_with("foo")
   
   assert result == mock_ast.Eq.return_value
@@ -345,7 +359,7 @@ def test_eq(mock_ast):
 def test_ne(mock_ast):
   mock_ast.Ne.return_value = Mock()
   
-  result = ne(["foo"])
+  result = ne("foo")
   mock_ast.Ne.assert_called_once_with("foo")
   
   assert result == mock_ast.Ne.return_value
@@ -355,7 +369,7 @@ def test_ne(mock_ast):
 def test_lt(mock_ast):
   mock_ast.Lt.return_value = Mock()
   
-  result = lt(["foo"])
+  result = lt("foo")
   mock_ast.Lt.assert_called_once_with("foo")
   
   assert result == mock_ast.Lt.return_value
@@ -365,7 +379,7 @@ def test_lt(mock_ast):
 def test_le(mock_ast):
   mock_ast.Le.return_value = Mock()
   
-  result = le(["foo"])
+  result = le("foo")
   mock_ast.Le.assert_called_once_with("foo")
   
   assert result == mock_ast.Le.return_value
@@ -375,7 +389,7 @@ def test_le(mock_ast):
 def test_gt(mock_ast):
   mock_ast.Gt.return_value = Mock()
   
-  result = gt(["foo"])
+  result = gt("foo")
   mock_ast.Gt.assert_called_once_with("foo")
   
   assert result == mock_ast.Gt.return_value
@@ -385,7 +399,7 @@ def test_gt(mock_ast):
 def test_ge(mock_ast):
   mock_ast.Ge.return_value = Mock()
   
-  result = ge(["foo"])
+  result = ge("foo")
   mock_ast.Ge.assert_called_once_with("foo")
   
   assert result == mock_ast.Ge.return_value
@@ -395,7 +409,7 @@ def test_ge(mock_ast):
 def test_add(mock_ast):
   mock_ast.Add.return_value = Mock()
   
-  result = add(["foo"])
+  result = add("foo")
   mock_ast.Add.assert_called_once_with("foo")
   
   assert result == mock_ast.Add.return_value
@@ -405,7 +419,7 @@ def test_add(mock_ast):
 def test_sub(mock_ast):
   mock_ast.Sub.return_value = Mock()
   
-  result = sub(["foo"])
+  result = sub("foo")
   mock_ast.Sub.assert_called_once_with("foo")
   
   assert result == mock_ast.Sub.return_value
@@ -415,7 +429,7 @@ def test_sub(mock_ast):
 def test_mul(mock_ast):
   mock_ast.Mul.return_value = Mock()
   
-  result = mul(["foo"])
+  result = mul("foo")
   mock_ast.Mul.assert_called_once_with("foo")
   
   assert result == mock_ast.Mul.return_value
@@ -425,7 +439,7 @@ def test_mul(mock_ast):
 def test_div(mock_ast):
   mock_ast.Div.return_value = Mock()
   
-  result = div(["foo"])
+  result = div("foo")
   mock_ast.Div.assert_called_once_with("foo")
   
   assert result == mock_ast.Div.return_value
@@ -435,7 +449,7 @@ def test_div(mock_ast):
 def test_mod(mock_ast):
   mock_ast.Mod.return_value = Mock()
   
-  result = mod(["foo"])
+  result = mod("foo")
   mock_ast.Mod.assert_called_once_with("foo")
   
   assert result == mock_ast.Mod.return_value
@@ -445,7 +459,7 @@ def test_mod(mock_ast):
 def test_bit_and(mock_ast):
   mock_ast.BitAnd.return_value = Mock()
   
-  result = bit_and(["foo"])
+  result = bit_and("foo")
   mock_ast.BitAnd.assert_called_once_with("foo")
   
   assert result == mock_ast.BitAnd.return_value
@@ -455,7 +469,7 @@ def test_bit_and(mock_ast):
 def test_bit_or(mock_ast):
   mock_ast.BitOr.return_value = Mock()
   
-  result = bit_or(["foo"])
+  result = bit_or("foo")
   mock_ast.BitOr.assert_called_once_with("foo")
   
   assert result == mock_ast.BitOr.return_value
@@ -465,7 +479,7 @@ def test_bit_or(mock_ast):
 def test_bit_xor(mock_ast):
   mock_ast.BitXor.return_value = Mock()
   
-  result = bit_xor(["foo"])
+  result = bit_xor("foo")
   mock_ast.BitXor.assert_called_once_with("foo")
   
   assert result == mock_ast.BitXor.return_value
@@ -475,7 +489,7 @@ def test_bit_xor(mock_ast):
 def test_bit_not(mock_ast):
   mock_ast.BitNot.return_value = Mock()
   
-  result = bit_not(["foo"])
+  result = bit_not("foo")
   mock_ast.BitNot.assert_called_once_with("foo")
   
   assert result == mock_ast.BitNot.return_value
@@ -485,7 +499,7 @@ def test_bit_not(mock_ast):
 def test_bit_sal(mock_ast):
   mock_ast.BitSal.return_value = Mock()
   
-  result = bit_sal(["foo"])
+  result = bit_sal("foo")
   mock_ast.BitSal.assert_called_once_with("foo")
   
   assert result == mock_ast.BitSal.return_value
@@ -495,7 +509,7 @@ def test_bit_sal(mock_ast):
 def test_bit_sar(mock_ast):
   mock_ast.BitSar.return_value = Mock()
   
-  result = bit_sar(["foo"])
+  result = bit_sar("foo")
   mock_ast.BitSar.assert_called_once_with("foo")
   
   assert result == mock_ast.BitSar.return_value
@@ -505,7 +519,7 @@ def test_bit_sar(mock_ast):
 def test_floor(mock_ast):
   mock_ast.Floor.return_value = Mock()
   
-  result = floor(["foo"])
+  result = floor("foo")
   mock_ast.Floor.assert_called_once_with("foo")
   
   assert result == mock_ast.Floor.return_value
@@ -515,7 +529,7 @@ def test_floor(mock_ast):
 def test_ceil(mock_ast):
   mock_ast.Ceil.return_value = Mock()
   
-  result = ceil(["foo"])
+  result = ceil("foo")
   mock_ast.Ceil.assert_called_once_with("foo")
   
   assert result == mock_ast.Ceil.return_value
@@ -525,7 +539,7 @@ def test_ceil(mock_ast):
 def test_round(mock_ast):
   mock_ast.Round.return_value = Mock()
   
-  result = round(["foo"])
+  result = round("foo")
   mock_ast.Round.assert_called_once_with("foo")
   
   assert result == mock_ast.Round.return_value
@@ -535,7 +549,7 @@ def test_round(mock_ast):
 def test_not_(mock_ast):
   mock_ast.Not.return_value = Mock()
   
-  result = not_(["foo"])
+  result = not_("foo")
   mock_ast.Not.assert_called_once_with("foo")
   
   assert result == mock_ast.Not.return_value
@@ -545,7 +559,7 @@ def test_not_(mock_ast):
 def test_and_(mock_ast):
   mock_ast.And.return_value = Mock()
   
-  result = and_(["foo"])
+  result = and_("foo")
   mock_ast.And.assert_called_once_with("foo")
   
   assert result == mock_ast.And.return_value
@@ -555,7 +569,7 @@ def test_and_(mock_ast):
 def test_or_(mock_ast):
   mock_ast.Or.return_value = Mock()
   
-  result = or_(["foo"])
+  result = or_("foo")
   mock_ast.Or.assert_called_once_with("foo")
   
   assert result == mock_ast.Or.return_value
@@ -565,7 +579,7 @@ def test_or_(mock_ast):
 def test_type_of(mock_ast):
   mock_ast.TypeOf.return_value = Mock()
   
-  result = type_of(["foo"])
+  result = type_of("foo")
   mock_ast.TypeOf.assert_called_once_with("foo")
   
   assert result == mock_ast.TypeOf.return_value
@@ -575,7 +589,7 @@ def test_type_of(mock_ast):
 def test_info(mock_ast):
   mock_ast.info.return_value = Mock()
   
-  result = info(["foo"])
+  result = info("foo")
   mock_ast.Info.assert_called_once_with("foo")
   
   assert result == mock_ast.Info.return_value
@@ -585,10 +599,70 @@ def test_info(mock_ast):
 def test_binary(mock_ast):
   mock_ast.Binary.return_value = Mock()
   
-  result = binary(["foo"])
+  result = binary("foo")
   mock_ast.Binary.assert_called_once_with("foo")
   
   assert result == mock_ast.Binary.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_range(mock_ast):
+  mock_ast.Range.return_value = Mock()
+  
+  result = range("foo")
+  mock_ast.Range.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Range.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_make_timezone(mock_ast):
+  mock_ast.RqlTzinfo.return_value = Mock()
+  
+  result = make_timezone("foo")
+  mock_ast.RqlTzinfo.assert_called_once_with("foo")
+  
+  assert result == mock_ast.RqlTzinfo.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_time(mock_ast):
+  mock_ast.Time.return_value = Mock()
+  
+  result = time("foo")
+  mock_ast.Time.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Time.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_iso8601(mock_ast):
+  mock_ast.ISO8601.return_value = Mock()
+  
+  result = iso8601("foo", foo="foo")
+  mock_ast.ISO8601.assert_called_once_with("foo", foo="foo")
+  
+  assert result == mock_ast.ISO8601.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_epoch_time(mock_ast):
+  mock_ast.EpochTime.return_value = Mock()
+  
+  result = epoch_time("foo")
+  mock_ast.EpochTime.assert_called_once_with("foo")
+  
+  assert result == mock_ast.EpochTime.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_now(mock_ast):
+  mock_ast.Now.return_value = Mock()
+  
+  result = now("foo")
+  mock_ast.Now.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Now.return_value
   
   
 @patch("rethinkdb.query.ast")
@@ -600,3 +674,102 @@ def test_range(mock_ast):
   
   assert result == mock_ast.Range.return_value
   
+  
+@patch("rethinkdb.query.ast")
+def test_literal(mock_ast):
+  mock_ast.Literal.return_value = Mock()
+  
+  result = literal("foo")
+  mock_ast.Literal.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Literal.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_object(mock_ast):
+  mock_ast.Object.return_value = Mock()
+  
+  result = object("foo")
+  mock_ast.Object.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Object.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_uuid(mock_ast):
+  mock_ast.UUID.return_value = Mock()
+  
+  result = uuid("foo")
+  mock_ast.UUID.assert_called_once_with("foo")
+  
+  assert result == mock_ast.UUID.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_geojson(mock_ast):
+  mock_ast.GeoJson.return_value = Mock()
+  
+  result = geojson("foo")
+  mock_ast.GeoJson.assert_called_once_with("foo")
+  
+  assert result == mock_ast.GeoJson.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_point(mock_ast):
+  mock_ast.Point.return_value = Mock()
+  
+  result = point("foo")
+  mock_ast.Point.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Point.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_line(mock_ast):
+  mock_ast.Line.return_value = Mock()
+  
+  result = line("foo")
+  mock_ast.Line.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Line.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_polygon(mock_ast):
+  mock_ast.Polygon.return_value = Mock()
+  
+  result = polygon("foo")
+  mock_ast.Polygon.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Polygon.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_distance(mock_ast):
+  mock_ast.Distance.return_value = Mock()
+  
+  result = distance("foo", foo="foo")
+  mock_ast.Distance.assert_called_once_with("foo", foo="foo")
+  
+  assert result == mock_ast.Distance.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_intersects(mock_ast):
+  mock_ast.Intersects.return_value = Mock()
+  
+  result = intersects("foo")
+  mock_ast.Intersects.assert_called_once_with("foo")
+  
+  assert result == mock_ast.Intersects.return_value
+  
+  
+@patch("rethinkdb.query.ast")
+def test_circle(mock_ast):
+  mock_ast.Circle.return_value = Mock()
+  
+  result = circle("foo", foo="foo")
+  mock_ast.Circle.assert_called_once_with("foo", foo="foo")
+  
+  assert result == mock_ast.Circle.return_value

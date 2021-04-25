@@ -25,13 +25,16 @@ AST module contains the way the queries are serialized and deserialized.
 
 # TODO: Check that we pass the right parameters when calling super's init.
 
+# FIXME: do a major refactoring and re-enable docstring checks
+# pylint: disable=missing-function-docstring,missing-class-docstring
+
 __all__ = ["expr", "RqlQuery", "RqlBinary", "RqlTzinfo"]
 
 import base64
 import binascii
+from collections import abc
 import datetime
 import threading
-from collections import abc
 from typing import Any, Callable, Iterable, List, Mapping, Optional
 from typing import Union as TUnion
 

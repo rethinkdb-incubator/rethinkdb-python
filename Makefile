@@ -82,7 +82,7 @@ lint: ## run linters against the package
 	mypy rethinkdb
 	bandit -q -r rethinkdb
 	pylint rethinkdb
-	flake8 rethinkdb --count --ignore=E501,W503 --show-source --statistics
+	flake8 rethinkdb --count --ignore=E203,E501,W503 --show-source --statistics
 
 protobuf: ## download and convert protobuf file
 	curl -sqo ${TARGET_PROTO_FILE} ${PROTO_FILE_URL}

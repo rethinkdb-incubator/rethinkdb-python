@@ -31,6 +31,7 @@ import base64
 import binascii
 import datetime
 import threading
+from collections import abc
 from typing import Any, Callable, Iterable, List, Mapping, Optional
 from typing import Union as TUnion
 
@@ -42,7 +43,7 @@ from rethinkdb.utilities import EnhancedTuple
 P_TERM = ql2_pb2.Term.TermType  # pylint: disable=invalid-name
 
 
-class RqlQuery:
+class RqlQuery:  # pylint: disable=too-many-public-methods
     """
     The RethinkDB Query object which determines the operations we can request
     from the server.
@@ -52,6 +53,10 @@ class RqlQuery:
         self._args = [expr(e) for e in args]
         self.kwargs = {k: expr(v) for k, v in kwargs.items()}
         self.term_type: Optional[int] = None
+
+        # TODO: when doing a refactor, make this parameter required and use
+        # proper `super` call everywhere we reuse this class.
+        self.statement: str = ""
 
     # TODO: add Connection type to connection when net module is migrated
     # TODO: add return value when net module is migrated
@@ -511,7 +516,7 @@ class RqlQuery:
             bracket_operator=True,
         )
 
-    def __iter__(*args, **kwargs):
+    def __iter__(self):
         raise ReqlDriverError(
             "__iter__ called on an RqlQuery object.\n"
             "To iterate over the results of a query, call run first.\n"
@@ -734,7 +739,7 @@ class RqlBoolOperQuery(RqlQuery):
     def set_infix(self):
         self.infix = True
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         term_args = [
             EnhancedTuple("r.expr(", args[i], ")")
             if needs_wrap(self._args[i])
@@ -743,9 +748,7 @@ class RqlBoolOperQuery(RqlQuery):
         ]
 
         if self.infix:
-            infix = EnhancedTuple(
-                *term_args, int_separator=[" ", self.statement_infix, " "]
-            )
+            infix = EnhancedTuple(*term_args, int_separator=[" ", self.infix, " "])
             return EnhancedTuple("(", infix, ")")
 
         return EnhancedTuple(
@@ -762,7 +765,7 @@ class RqlBiOperQuery(RqlQuery):
     RethinkDB binary query operation.
     """
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         term_args = [
             EnhancedTuple("r.expr(", args[i], ")")
             if needs_wrap(self._args[i])
@@ -790,7 +793,7 @@ class RqlBiCompareOperQuery(RqlBiOperQuery):
                 raise ReqlDriverCompileError(
                     f"""
                     Calling '{self.statement}' on result of infix bitwise operator:
-                    {QueryPrinter(self).print_query()}\n
+                    {QueryPrinter(self).query}\n
                     This is almost always a precedence error.
                     Note that `a < b | b < c` <==> `a < (b | b) < c`.
                     If you really want this behavior, use `.or_` or `.and_` instead.
@@ -839,7 +842,7 @@ class RqlBracketQuery(RqlMethodQuery):
                 args[0], "[", EnhancedTuple(*args[1:], int_separator=[","]), "]"
             )
 
-        return super().compose(self, args, kwargs)
+        return super().compose(args, kwargs)
 
 
 class RqlTzinfo(datetime.tzinfo):
@@ -895,7 +898,7 @@ class Datum(RqlQuery):
     def build(self):
         return self.data
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         return repr(self.data)
 
 
@@ -906,6 +909,7 @@ class MakeArray(RqlQuery):
 
     term_type = P_TERM.MAKE_ARRAY
 
+    # pylint: disable=unused-argument,no-self-use
     def compose(self, args, kwargs):
         return EnhancedTuple("[", EnhancedTuple(*args, int_separator=", "), "]")
 
@@ -914,7 +918,7 @@ class MakeObj(RqlQuery):
     term_type = P_TERM.MAKE_OBJ
 
     def __init__(self, obj_dict):
-        super(MakeObj, self).__init__()
+        super().__init__()
 
         for key, value in obj_dict.items():
             if not isinstance(key, str):
@@ -925,6 +929,7 @@ class MakeObj(RqlQuery):
     def build(self):
         return self.kwargs
 
+    # pylint: disable=unused-argument,no-self-use
     def compose(self, args, kwargs):
         return EnhancedTuple(
             "r.expr({",
@@ -942,6 +947,7 @@ class MakeObj(RqlQuery):
 class Var(RqlQuery):
     term_type = P_TERM.VAR
 
+    # pylint: disable=unused-argument,no-self-use
     def compose(self, args, kwargs):
         return "var_" + args[0]
 
@@ -982,6 +988,7 @@ class ImplicitVar(RqlQuery):
     def __call__(self, *args, **kwargs):
         raise TypeError("'r.row' is not callable, use 'r.row[...]' instead")
 
+    # pylint: disable=unused-argument,no-self-use
     def compose(self, args, kwargs):
         return "r.row"
 
@@ -1019,7 +1026,7 @@ class Ge(RqlBiCompareOperQuery):
 class Not(RqlQuery):
     term_type = P_TERM.NOT
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         if isinstance(self._args[0], Datum):
             args[0] = EnhancedTuple("r.expr(", args[0], ")")
 
@@ -1263,7 +1270,7 @@ class FunCall(RqlQuery):
         args = [func_wrap(args[-1])] + list(args[:-1])
         super().__init__(self, *args)
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         if len(args) != 2:
             return EnhancedTuple(
                 "r.do(",
@@ -1281,7 +1288,7 @@ class FunCall(RqlQuery):
         return EnhancedTuple(args[1], ".do(", args[0], ")")
 
 
-class Table(RqlQuery):
+class Table(RqlQuery):  # pylint: disable=too-many-public-methods
     term_type = P_TERM.TABLE
     statement = "table"
 
@@ -1964,7 +1971,7 @@ class Func(RqlQuery):
     nextVarId = 1
 
     def __init__(self, lmbd):
-        super(Func, self).__init__()
+        super().__init__()
         vrs = []
         vrids = []
 
@@ -1987,11 +1994,18 @@ class Func(RqlQuery):
         self.vrs = vrs
         self._args.extend([MakeArray(*vrids), expr(lmbd(*vrs))])
 
-    def compose(self, args, kwargs):
+    def compose(self, args, kwargs):  # pylint: disable=unused-argument
         return EnhancedTuple(
             "lambda ",
             EnhancedTuple(
-                *[v.compose([v._args[0].compose(None, None)], []) for v in self.vrs],
+                *[
+                    v.compose(
+                        # pylint: disable=protected-access
+                        [v._args[0].compose(None, None)],
+                        [],
+                    )
+                    for v in self.vrs
+                ],
                 int_separator=", ",
             ),
             ": ",
@@ -2022,7 +2036,10 @@ def _ivar_scan(query) -> bool:
     if isinstance(query, ImplicitVar):
         return True
 
-    if any([_ivar_scan(arg) for arg in query._args]):
+    if any(
+        # pylint: disable=protected-access
+        [_ivar_scan(arg) for arg in query._args]
+    ):
         return True
 
     if any([_ivar_scan(arg) for k, arg in query.kwargs.items()]):
@@ -2039,6 +2056,7 @@ def needs_wrap(arg):
     return isinstance(arg, (Datum, MakeArray, MakeObj))
 
 
+# pylint: disable=too-many-return-statements
 def expr(
     val: TUnion[
         str,
@@ -2065,17 +2083,23 @@ def expr(
 
     if isinstance(val, RqlQuery):
         return val
-    elif isinstance(val, Callable):  # type: ignore
+
+    if callable(val):
         return Func(val)
-    elif isinstance(val, str):  # TODO: Default is to return Datum - Remove?
+
+    if isinstance(val, str):  # TODO: Default is to return Datum - Remove?
         return Datum(val)
-    elif isinstance(val, (bytes, RqlBinary)):
+
+    if isinstance(val, (bytes, RqlBinary)):
         return Binary(val)
-    elif isinstance(val, Mapping):
+
+    if isinstance(val, abc.Mapping):
         return MakeObj({k: expr(v, nesting_depth - 1) for k, v in val.items()})
-    elif isinstance(val, Iterable):
+
+    if isinstance(val, abc.Iterable):
         return MakeArray(*[expr(v, nesting_depth - 1) for v in val])  # type: ignore
-    elif isinstance(val, (datetime.datetime, datetime.date)):
+
+    if isinstance(val, (datetime.datetime, datetime.date)):
         if isinstance(val, datetime.date) or not val.tzinfo:
             raise ReqlDriverCompileError(
                 f"""

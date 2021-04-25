@@ -39,6 +39,12 @@ Changed
 * Renamed `recursively_make_hashable` to `make_hashable`
 * Renamed `optargs` to `kwargs` in `ast` module
 
+Fixed
+~~~~~
+
+* Fixed a potential "no-member" error of `RqlBoolOperatorQuery`
+* Fixed variety of quality issues in `ast` module
+
 Removed
 ~~~~~~~
 

@@ -38,6 +38,7 @@ __all__ = [
     "ReqlServerCompileError",
     "ReqlTimeoutError",
     "ReqlUserError",
+    "QueryPrinter",
 ]
 
 

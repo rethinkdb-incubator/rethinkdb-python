@@ -33,6 +33,17 @@ Changed
 * `HandshakeV1_0` defines `username` and `password` attributes as protected attributes
 * `HandshakeV1_0` has a hardcoded `JSONEncoder` and `JSONDecoder` from now on
 * `HandshakeV1_0` raises `InvalidHandshakeStateError` when an unrecognized state called in `next_message`
+* Moved `ReQLEncoder`, `ReQLDecoder`, `recursively_make_hashable` to `encoder` module
+* Moved `T` to `utilities` to module and renamed to `EnhancedTuple`
+* Renamed `EnhancedTuple`/`T`'s `intsp` parameter to `int_separator`
+* Renamed `recursively_make_hashable` to `make_hashable`
+* Renamed `optargs` to `kwargs` in `ast` module
+
+Fixed
+~~~~~
+
+* Fixed a potential "no-member" error of `RqlBoolOperatorQuery`
+* Fixed variety of quality issues in `ast` module
 
 Removed
 ~~~~~~~

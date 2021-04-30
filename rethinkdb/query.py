@@ -140,11 +140,11 @@ def json(*arguments):
     return ast.Json(*arguments)
 
 
-def js(*arguments, **kwarguments):  # pylint: disable=invalid-name
+def js(*arguments, **kwargs):  # pylint: disable=invalid-name
     """
     Create a javascript expression.
     """
-    return ast.JavaScript(*arguments, **kwarguments)
+    return ast.JavaScript(*arguments, **kwargs)
 
 
 def args(*arguments):
@@ -160,13 +160,13 @@ def args(*arguments):
     return ast.Args(*arguments)
 
 
-def http(url, **kwarguments):
+def http(url, **kwargs):
     """
     Retrieve data from the specified URL over HTTP. The return type depends on
     the result_format option, which checks the Content-Type of the response by
     default. Make sure that you never use this command for user provided URLs.
     """
-    return ast.Http(ast.func_wrap(url), **kwarguments)
+    return ast.Http(ast.func_wrap(url), **kwargs)
 
 
 def error(*msg):
@@ -177,7 +177,7 @@ def error(*msg):
     return ast.UserError(*msg)
 
 
-def random(*arguments, **kwarguments):
+def random(*arguments, **kwargs):
     """
     Generate a random number between given (or implied) bounds. random takes
     zero, one or two arguments.
@@ -198,7 +198,7 @@ def random(*arguments, **kwarguments):
     but when generating a floating-point number, the ‘open’ side may be less
     than the ‘closed’ side.
     """
-    return ast.Random(*arguments, **kwarguments)
+    return ast.Random(*arguments, **kwargs)
 
 
 def do(*arguments):  # pylint: disable=invalid-name
@@ -224,13 +224,13 @@ def do(*arguments):  # pylint: disable=invalid-name
     return ast.FunCall(*arguments)
 
 
-def table(*arguments, **kwarguments):
+def table(*arguments, **kwargs):
     """
     Return all documents in a table. Other commands may be chained after table
     to return a subset of documents (such as get and filter) or perform further
     processing.
     """
-    return ast.Table(*arguments, **kwarguments)
+    return ast.Table(*arguments, **kwargs)
 
 
 def db(*arguments):  # pylint: disable=invalid-name
@@ -275,11 +275,11 @@ def db_config(*arguments):
     return ast.Config(*arguments)
 
 
-def table_create(*arguments, **kwarguments):
+def table_create(*arguments, **kwargs):
     """
     Create a table. A RethinkDB table is a collection of JSON documents.
     """
-    return ast.TableCreateTL(*arguments, **kwarguments)
+    return ast.TableCreateTL(*arguments, **kwargs)
 
 
 def table_drop(*arguments):
@@ -296,12 +296,12 @@ def table_list(*arguments):
     return ast.TableListTL(*arguments)
 
 
-def grant(*arguments, **kwarguments):
+def grant(*arguments, **kwargs):
     """
     Grant or deny access permissions for a user account, globally or on a
     per-database or per-table basis.
     """
-    return ast.GrantTL(*arguments, **kwarguments)
+    return ast.GrantTL(*arguments, **kwargs)
 
 
 def branch(*arguments):
@@ -323,7 +323,7 @@ def union(*arguments):
     return ast.Union(*arguments)
 
 
-def map(*arguments):  # pylint: disable=redefined-builtin
+def  map(*arguments):  # pylint: disable=redefined-builtin
     """
     Transform each element of one or more sequences by applying a mapping
     function to them. If map is run with two or more sequences, it will
@@ -674,11 +674,11 @@ def time(*arguments):
     return ast.Time(*arguments)
 
 
-def iso8601(*arguments, **kwarguments):
+def iso8601(*arguments, **kwargs):
     """
     ISO8601 function.
     """
-    return ast.ISO8601(*arguments, **kwarguments)
+    return ast.ISO8601(*arguments, **kwargs)
 
 
 def epoch_time(*arguments):
@@ -760,12 +760,12 @@ def polygon(*arguments):
     return ast.Polygon(*arguments)
 
 
-def distance(*arguments, **kwarguments):
+def distance(*arguments, **kwargs):
     """
     Compute the distance between a point and another geometry object. At least
     one of the geometry objects specified must be a point.
     """
-    return ast.Distance(*arguments, **kwarguments)
+    return ast.Distance(*arguments, **kwargs)
 
 
 def intersects(*arguments):
@@ -777,13 +777,13 @@ def intersects(*arguments):
     return ast.Intersects(*arguments)
 
 
-def circle(*arguments, **kwarguments):
+def circle(*arguments, **kwargs):
     """
     Construct a circular line or polygon. A circle in RethinkDB is a polygon or
     line approximating a circle of a given radius around a given center,
     consisting of a specified number of vertices (default 32).
     """
-    return ast.Circle(*arguments, **kwarguments)
+    return ast.Circle(*arguments, **kwargs)
 
 
 row = ast.ImplicitVar()

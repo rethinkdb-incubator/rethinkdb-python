@@ -323,7 +323,7 @@ def union(*arguments):
     return ast.Union(*arguments)
 
 
-def  map(*arguments):  # pylint: disable=redefined-builtin
+def map(*arguments):  # pylint: disable=redefined-builtin
     """
     Transform each element of one or more sequences by applying a mapping
     function to them. If map is run with two or more sequences, it will
